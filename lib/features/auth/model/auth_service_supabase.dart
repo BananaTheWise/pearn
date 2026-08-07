@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase_flutter;
 
 import '../../../core/models/session.dart';
 import '../../../core/models/user.dart';
@@ -21,12 +21,10 @@ class AuthServiceSupabase implements AuthService {
   late final Stream<AuthState> _authStateStream;
 
   AuthServiceSupabase({
-    required SupabaseService supabaseService,
-    required GoogleAuthService googleAuthService,
-    required UserRepository userRepository,
-  })  : _supabaseService = supabaseService,
-        _googleAuthService = googleAuthService,
-        _userRepository = userRepository {
+    required this._supabaseService,
+    required this._googleAuthService,
+    required this._userRepository,
+  }) {
     _authStateStream = _buildAuthStateStream().asBroadcastStream();
   }
 
@@ -38,7 +36,6 @@ class AuthServiceSupabase implements AuthService {
     debugPrint('[AUTH] Signup started');
 
     try {
-      // Step 1: Supabase auth signup
       debugPrint('[AUTH] Calling Supabase signup');
       final response = await _supabaseService.client.auth.signUp(
         email: email,
@@ -52,27 +49,30 @@ class AuthServiceSupabase implements AuthService {
 
       debugPrint('[AUTH] Supabase signup succeeded');
 
-      // Step 2: Create the corresponding profile row
-      debugPrint('[AUTH] Creating profile');
-      final user = User(
+      // Profile row is created automatically by the on_auth_user_created
+      // trigger — no client-side insert needed (and none would work
+      // reliably here anyway, since there may be no session yet if email
+      // confirmation is required).
+      if (response.session != null) {
+        // We have a session — fetch the profile the trigger just created.
+        final savedUser = await _userRepository.findById(supabaseUser.id);
+        if (savedUser != null) {
+          debugPrint('[AUTH] Signup completed');
+          return savedUser;
+        }
+      }
+
+      // No session yet (email confirmation pending) — return a local
+      // placeholder; the real profile will be fetched on first login.
+      debugPrint('[AUTH] Signup completed, awaiting email confirmation');
+      return User(
         id: supabaseUser.id,
-        username: email.split('@').first, // initial username from email
-        role: User.roleStudent, // safe default – cannot create admin
+        username: email.split('@').first,
+        role: User.roleStudent,
         status: User.statusActive,
         createdAt: DateTime.now(),
       );
-
-      final savedUser = await _userRepository.save(user);
-      debugPrint('[AUTH] Signup completed');
-      return savedUser;
     } catch (e) {
-      // If auth succeeded but profile creation failed, sign out the orphan auth user
-      try {
-        await _supabaseService.client.auth.signOut();
-      } catch (_) {
-        // best effort cleanup
-      }
-
       debugPrint('[ERROR][AUTH] Signup failed');
       rethrow;
     }
@@ -119,7 +119,7 @@ class AuthServiceSupabase implements AuthService {
 
       // Sign in to Supabase with Google credentials
       final response = await _supabaseService.client.auth.signInWithIdToken(
-        provider: OAuthProvider.google,
+        provider: supabase_flutter.OAuthProvider.google,
         idToken: tokens.idToken,
         accessToken: tokens.accessToken,
       );
@@ -143,8 +143,7 @@ class AuthServiceSupabase implements AuthService {
       // First login – create a new profile
       final newUser = User(
         id: supabaseUser.id,
-        username:
-            supabaseUser.email?.split('@').first ?? 'google_user',
+        username: supabaseUser.email?.split('@').first ?? 'google_user',
         role: User.roleStudent,
         status: User.statusActive,
         createdAt: DateTime.now(),
@@ -212,8 +211,9 @@ class AuthServiceSupabase implements AuthService {
     debugPrint('[AUTH] Password reset update started');
 
     try {
-      await _supabaseService.client.auth
-          .updateUser(UserAttributes(password: newPassword));
+      await _supabaseService.client.auth.updateUser(
+        supabase_flutter.UserAttributes(password: newPassword),
+      );
       debugPrint('[AUTH] Password reset completed');
     } catch (e) {
       debugPrint('[ERROR][AUTH] Password reset failed');
@@ -231,8 +231,8 @@ class AuthServiceSupabase implements AuthService {
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  /// Creates a [Session] from a Supabase [Session].
-  Session _mapSession(supabase.Session? session) {
+  /// Creates a [Session] from a Supabase session.
+  Session _mapSession(supabase_flutter.Session? session) {
     if (session == null) {
       throw Exception('Session is null after login');
     }
@@ -254,8 +254,7 @@ class AuthServiceSupabase implements AuthService {
     yield _currentAuthState();
     debugPrint('[AUTH] Listening for auth state changes');
 
-    await for (final event
-        in _supabaseService.client.auth.onAuthStateChange) {
+    await for (final event in _supabaseService.client.auth.onAuthStateChange) {
       final state = _mapSessionToState(event.session);
       debugPrint('[AUTH] Auth state changed: ${state.name}');
       yield state;
@@ -263,12 +262,12 @@ class AuthServiceSupabase implements AuthService {
   }
 
   AuthState _currentAuthState() {
-    return _mapSessionToState(
-      _supabaseService.client.auth.currentSession,
-    );
+    return _mapSessionToState(_supabaseService.client.auth.currentSession);
   }
 
-  AuthState _mapSessionToState(supabase.Session? session) {
-    return session != null ? AuthState.authenticated : AuthState.unauthenticated;
+  AuthState _mapSessionToState(supabase_flutter.Session? session) {
+    return session != null
+        ? AuthState.authenticated
+        : AuthState.unauthenticated;
   }
 }

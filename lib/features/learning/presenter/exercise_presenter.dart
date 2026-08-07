@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:pearn/features/learning/view/i_lesson_view.dart';
 
 import '../../learning/model/exercise.dart';
 import '../../learning/model/course_repository.dart';
@@ -27,7 +28,7 @@ class ExercisePresenter {
 
   /// Attaches the view that will receive UI updates.
   set view(IExerciseView? view) {
-    _view = view;
+    _view = view as ILessonView?;
   }
 
   // ---------------------------------------------------------------------------
@@ -56,7 +57,7 @@ class ExercisePresenter {
       _currentExerciseId = exerciseId;
       _currentIndex = index;
 
-      _view?.showExercise(_exercises[_currentIndex]);
+      _view?.showExercises(_exercises[_currentIndex] as List<Exercise>);
       debugPrint('[PRESENTER][EXERCISE] Exercise loaded');
     } catch (e) {
       debugPrint('[PRESENTER][EXERCISE] Failed to load exercise');
@@ -93,7 +94,7 @@ class ExercisePresenter {
       // Show the next exercise in the same screen.
       _currentIndex = nextIndex;
       _currentExerciseId = _exercises[nextIndex].id;
-      _view?.showExercise(_exercises[nextIndex]);
+      _view?.showExercises(_exercises[nextIndex] as List<Exercise>);
     } else {
       // No more exercises – mark as completed and then go back.
       _view?.showCompletion();

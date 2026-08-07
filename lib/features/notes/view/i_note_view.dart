@@ -1,11 +1,5 @@
+import '../../../core/models/sync_status.dart';
 import '../model/note.dart';
-
-/// Represents the current synchronization state of a note.
-enum SyncStatus {
-  synced,
-  pending,
-  error,
-}
 
 /// Abstract interface through which the [NotePresenter] communicates
 /// with the note UI screens.

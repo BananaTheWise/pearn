@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../../../core/models/enrollment.dart';
+import '../../learning/model/enrollment.dart';
 import '../../progress/model/roadmap.dart';
 import '../../progress/model/roadmap_repository.dart';
 import '../../progress/model/progress_repository.dart';

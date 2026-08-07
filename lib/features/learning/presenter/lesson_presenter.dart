@@ -3,15 +3,8 @@ import 'package:flutter/foundation.dart';
 import '../../learning/model/course_repository.dart';
 import '../../learning/model/exercise.dart';
 import '../../learning/view/i_lesson_view.dart';
+import '../../progress/model/progress_repository.dart';
 
-// -----------------------------------------------------------------------------
-// Lightweight placeholder until ProgressRepository is fully implemented.
-// -----------------------------------------------------------------------------
-abstract class ProgressRepository {
-  Future<void> markLessonCompleted(
-      String userId, String courseId, String lessonId);
-}
-// -----------------------------------------------------------------------------
 
 /// Coordinates between the lesson UI and the [CourseRepository].
 ///

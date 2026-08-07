@@ -1,3 +1,4 @@
+import 'chapter.dart';
 /// Pure data model representing a learning course.
 ///
 /// Sourced from GitHub static content (e.g., `course.json`).
@@ -6,25 +7,12 @@
 /// Required fields must be present in the source map; otherwise a
 /// [FormatException] is thrown during parsing.
 class Course {
-  /// Unique course identifier (e.g., `'flutter-basics'`).
   final String id;
-
-  /// Human-readable course title.
   final String title;
-
-  /// Optional longer description.
   final String? description;
-
-  /// Programming language or topic (e.g., `'dart'`, `'python'`).
   final String? language;
-
-  /// Difficulty level (e.g., `'beginner'`, `'intermediate'`, `'advanced'`).
   final String? level;
-
-  /// Display order when multiple courses are listed.
   final int? order;
-
-  /// The chapters that make up this course.
   final List<Chapter> chapters;
 
   const Course({
@@ -128,63 +116,4 @@ class Course {
 
   @override
   String toString() => 'Course(id: $id, title: $title, chapters: ${chapters.length})';
-}
-
-/// Represents a single chapter within a [Course].
-class Chapter {
-  /// Unique identifier for the chapter (often a folder slug).
-  final String id;
-
-  /// Display title of the chapter.
-  final String title;
-
-  /// Order within the course (if specified).
-  final int? order;
-
-  const Chapter({
-    required this.id,
-    required this.title,
-    this.order,
-  });
-
-  /// Creates a [Chapter] from a map.
-  ///
-  /// Throws [FormatException] if required fields (`id`, `title`) are missing.
-  factory Chapter.fromMap(Map<String, dynamic> map) {
-    final id = map['id'];
-    final title = map['title'];
-    if (id == null || title == null) {
-      throw const FormatException(
-        'Chapter map must contain non-null "id" and "title" fields.',
-      );
-    }
-    return Chapter(
-      id: id as String,
-      title: title as String,
-      order: map['order'] is int ? map['order'] as int : null,
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'title': title,
-      'order': order,
-    };
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Chapter &&
-          runtimeType == other.runtimeType &&
-          id == other.id &&
-          title == other.title &&
-          order == other.order;
-
-  @override
-  int get hashCode => Object.hash(id, title, order);
-
-  @override
-  String toString() => 'Chapter(id: $id, title: $title)';
 }

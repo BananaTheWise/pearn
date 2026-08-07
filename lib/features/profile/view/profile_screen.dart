@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/di.dart';
 import '../../../core/models/user.dart';
-import '../../../shared/widgets/user_avatar.dart';
+import '../../../core/widgets/user_avatar.dart';
 import '../presenter/profile_presenter.dart';
 import 'i_profile_view.dart';
 

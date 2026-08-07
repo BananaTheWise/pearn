@@ -24,4 +24,10 @@ abstract class ILessonView {
 
   /// Navigates to the exercise detail/attempt screen for the given exercise ID.
   void navigateToExercise(String exerciseId);
+
+  void showResult(bool correct, String? explanation) {}
+
+  void showCompletion() {}
+
+  void navigateToNextExercise() {}
 }

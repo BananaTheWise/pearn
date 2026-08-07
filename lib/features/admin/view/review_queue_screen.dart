@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:pearn/features/admin/view/i_admin_view.dart';
 
 import '../../../core/di.dart';
 import '../presenter/admin_course_presenter.dart';
@@ -30,7 +31,7 @@ class _ReviewQueueScreenState extends State<ReviewQueueScreen>
     super.initState();
     debugPrint('[UI][ADMIN][COURSE] Review queue opened');
     _presenter = getIt<AdminCoursePresenter>();
-    _presenter.view = this;
+    _presenter.view = this as IAdminView?;
     _presenter.loadPendingCourses();
   }
 

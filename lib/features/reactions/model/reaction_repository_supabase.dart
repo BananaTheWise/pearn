@@ -18,7 +18,10 @@ class ReactionRepositorySupabase implements ReactionRepository {
   // getUserCourseReaction
   // ---------------------------------------------------------------------------
   @override
-  Future<Reaction?> getUserCourseReaction(String userId, String courseId) async {
+  Future<Reaction?> getUserCourseReaction(
+    String userId,
+    String courseId,
+  ) async {
     debugPrint('[REPOSITORY][REACTION] Loading course reaction');
     debugPrint('[DB][REACTION] Query started');
 
@@ -107,25 +110,30 @@ class ReactionRepositorySupabase implements ReactionRepository {
   // getCourseReactionCount
   // ---------------------------------------------------------------------------
   @override
-  Future<int> getCourseReactionCount(String courseId, String reactionType) async {
+  Future<int> getCourseReactionCount(
+    String courseId,
+    String reactionType,
+  ) async {
     debugPrint('[REPOSITORY][REACTION] Loading course reaction count');
 
     try {
-      // We use the count head option or select count.
-      // Supabase Dart v1/v2: using 'count' option in select.
       final response = await _supabaseService.client
           .from('reactions')
-          .select('*', const FetchOptions(count: FetchCount.exact))
+          .select('id')
           .eq('target_type', 'course')
           .eq('target_id', courseId)
-          .eq('type', reactionType);
+          .eq('type', reactionType)
+          .count();
 
-      final count = response.count ?? 0;
+      final count = response.count;
+
       debugPrint('[DB][REACTION] Reaction count: $count');
+
       return count;
     } catch (e) {
       debugPrint('[ERROR][REACTION] Failed to load reaction count');
       debugPrint('Reason: $e');
+
       return 0;
     }
   }

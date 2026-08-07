@@ -140,4 +140,25 @@ class PendingWriteQueue {
       createdAt: DateTime.parse(map['createdAt'] as String),
     );
   }
+
+
+  /// Returns all pending operations in FIFO order without removing them.
+  List<WriteOperation> getAll() {
+    if (_box == null) {
+      throw StateError('PendingWriteQueue not initialised.');
+    }
+
+    final order = _getOrderList();
+    final operations = <WriteOperation>[];
+
+    for (final id in order) {
+      final map = _box!.get(id);
+
+      if (map != null) {
+        operations.add(_mapToOperation(map));
+      }
+    }
+
+    return operations;
+  }
 }

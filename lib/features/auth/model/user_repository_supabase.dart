@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/models/user.dart';
+import '../../../core/models/user.dart' as app;
 import '../../../core/services/supabase_service.dart';
 import 'user_repository.dart';
 
@@ -16,7 +17,7 @@ class UserRepositorySupabase implements UserRepository {
   // findById
   // ---------------------------------------------------------------------------
   @override
-  Future<User?> findById(String id) async {
+  Future<app.User?> findById(String id) async {
     debugPrint('[REPOSITORY][USER] findById: $id');
     debugPrint('[DB] Selecting profile');
 
@@ -30,7 +31,7 @@ class UserRepositorySupabase implements UserRepository {
       debugPrint('[DB] Profile query completed');
       debugPrint('[REPOSITORY][USER] findById completed');
 
-      return User.fromMap(response);
+      return app.User.fromMap(response);
     } on PostgrestException catch (e) {
       // When .single() finds no row, PostgrestException with code PGRST116 is thrown.
       if (e.code == 'PGRST116') {
@@ -51,7 +52,7 @@ class UserRepositorySupabase implements UserRepository {
   // findByEmail
   // ---------------------------------------------------------------------------
   @override
-  Future<User?> findByEmail(String email) async {
+  Future<app.User?> findByEmail(String email) async {
     debugPrint('[REPOSITORY][USER] findByEmail started');
     debugPrint('[DB] Searching profile by email');
 
@@ -68,7 +69,7 @@ class UserRepositorySupabase implements UserRepository {
         return null;
       }
 
-      return User.fromMap(response);
+      return app.User.fromMap(response);
     } catch (e) {
       debugPrint('[ERROR][DB][USER] Failed to find profile by email');
       debugPrint('Reason: $e');
@@ -80,7 +81,7 @@ class UserRepositorySupabase implements UserRepository {
   // save
   // ---------------------------------------------------------------------------
   @override
-  Future<User> save(User user) async {
+  Future<app.User> save(app.User user) async {
     debugPrint('[REPOSITORY][USER] Saving profile');
     debugPrint('[DB] Upserting profile');
 
@@ -102,7 +103,7 @@ class UserRepositorySupabase implements UserRepository {
 
       debugPrint('[DB] Profile saved successfully');
 
-      return User.fromMap(response);
+      return app.User.fromMap(response);
     } catch (e) {
       debugPrint('[ERROR][DB][USER] Failed to save profile');
       debugPrint('Reason: $e');
@@ -137,7 +138,7 @@ class UserRepositorySupabase implements UserRepository {
   // search
   // ---------------------------------------------------------------------------
   @override
-  Future<List<User>> search(String query) async {
+  Future<List<app.User>> search(String query) async {
     debugPrint('[REPOSITORY][USER] Searching users');
 
     try {
@@ -147,7 +148,7 @@ class UserRepositorySupabase implements UserRepository {
           .or('username.ilike.%$query%,email.ilike.%$query%');
 
       final users =
-          (response as List<dynamic>).map((e) => User.fromMap(e)).toList();
+          (response as List<dynamic>).map((e) => app.User.fromMap(e)).toList();
 
       debugPrint('[DB] User search completed');
       debugPrint('[REPOSITORY][USER] Users found: ${users.length}');

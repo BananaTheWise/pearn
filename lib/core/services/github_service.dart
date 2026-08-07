@@ -15,25 +15,23 @@ class GithubService {
   // ---------------------------------------------------------------------------
   // Configuration (from build environment – NEVER LOGGED)
   // ---------------------------------------------------------------------------
-  static final String _owner = const String.fromEnvironment('GITHUB_OWNER');
-  static final String _repo = const String.fromEnvironment('GITHUB_REPO');
-  static final String _token = const String.fromEnvironment('GITHUB_TOKEN');
+  static const String _owner = String.fromEnvironment('GITHUB_OWNER');
+  static const String _repo = String.fromEnvironment('GITHUB_REPO');
 
   late final Dio _dio;
 
   GithubService() {
-    _dio = Dio(BaseOptions(
-      baseUrl: 'https://api.github.com',
-      headers: {
-        'Authorization': 'token $_token',
-        'Accept': 'application/vnd.github.v3+json',
-      },
-      responseType: ResponseType.json,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 20),
-    ));
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: 'https://api.github.com',
+        headers: {'Accept': 'application/vnd.github.v3+json'},
+        responseType: ResponseType.json,
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 20),
+      ),
+    );
 
-    if (_owner.isEmpty || _repo.isEmpty || _token.isEmpty) {
+    if (_owner.isEmpty || _repo.isEmpty) {
       debugPrint(
         '[WARNING][GITHUB] GitHub configuration is incomplete. '
         'Set GITHUB_OWNER, GITHUB_REPO, and GITHUB_TOKEN environment variables.',
@@ -48,21 +46,24 @@ class GithubService {
   /// Returns a list of course folder names from the repository's `courses` directory.
   Future<List<String>> listCourseFolders() async {
     debugPrint('[GITHUB] Loading course folders');
-    debugPrint('[GITHUB] Requesting /contents/courses');
-
     const path = '/repos/$_owner/$_repo/contents/courses';
-    final response = await _getWithRetry<dynamic>(path);
-
-    final List<dynamic> items = response.data as List<dynamic>;
-    final folders = items
-        .whereType<Map<String, dynamic>>()
-        .where((item) => item['type'] == 'dir')
-        .map((item) => item['name'] as String)
-        .toList();
-
-    debugPrint('[GITHUB] Course folders received: ${folders.length}');
-    debugPrint('[GITHUB] Course folder loading completed');
-    return folders;
+    try {
+      final response = await _getWithRetry<dynamic>(path);
+      final List<dynamic> items = response.data as List<dynamic>;
+      final folders = items
+          .whereType<Map<String, dynamic>>()
+          .where((item) => item['type'] == 'dir')
+          .map((item) => item['name'] as String)
+          .toList();
+      debugPrint('[GITHUB] Course folders received: ${folders.length}');
+      return folders;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        debugPrint('[GITHUB] No courses folder yet — returning empty list');
+        return [];
+      }
+      rethrow;
+    }
   }
 
   /// Fetches a JSON file from the repository and returns the decoded map.
@@ -140,10 +141,7 @@ class GithubService {
       // 2. Create the new reference
       final response = await _dio.post<Map<String, dynamic>>(
         '/repos/$_owner/$_repo/git/refs',
-        data: {
-          'ref': 'refs/heads/$newBranchName',
-          'sha': sha,
-        },
+        data: {'ref': 'refs/heads/$newBranchName', 'sha': sha},
       );
 
       final newSha = response.data!['object']['sha'] as String;
@@ -185,10 +183,7 @@ class GithubService {
       if (existingSha != null) 'sha': existingSha,
     };
 
-    await _dio.put(
-      '/repos/$_owner/$_repo/contents/$path',
-      data: data,
-    );
+    await _dio.put('/repos/$_owner/$_repo/contents/$path', data: data);
     debugPrint('[GITHUB] File committed successfully');
   }
 
@@ -301,7 +296,8 @@ class GithubService {
 
   String _decodeBase64Utf8(String base64String, String pathForLog) {
     try {
-      final bytes = base64.decode(base64String);
+      final cleaned = base64String.replaceAll(RegExp(r'\s'), '');
+      final bytes = base64.decode(cleaned);
       return utf8.decode(bytes);
     } catch (e) {
       debugPrint('[ERROR][GITHUB] Base64 decoding failed for $pathForLog');

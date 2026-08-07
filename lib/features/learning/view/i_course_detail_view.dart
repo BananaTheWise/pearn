@@ -1,4 +1,4 @@
-import '../../../core/models/enrollment.dart';
+import '../../../features/learning/model/enrollment.dart';
 import '../../learning/model/chapter.dart';
 import '../../learning/model/course.dart';
 

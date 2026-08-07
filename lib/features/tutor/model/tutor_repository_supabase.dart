@@ -173,7 +173,7 @@ class TutorRepositorySupabase implements TutorRepository {
 
       // Last active date from progress or user
       final lastActiveDate = progressResponse?['last_accessed'] != null
-          ? DateTime.tryParse(progressResponse['last_accessed'] as String)
+          ? DateTime.tryParse(progressResponse?['last_accessed'] as String)
           : userProfile?.lastActiveDate;
 
       final stat = StudentStat(

@@ -44,4 +44,10 @@ abstract class AuthService {
 
   /// Emits the current [AuthState] whenever it changes.
   Stream<AuthState> authStateChanges();
+
+  
+}
+
+class GoogleSignInCancelledException implements Exception {
+  const GoogleSignInCancelledException();
 }

@@ -203,28 +203,30 @@ class _ExamScreenState extends State<ExamScreen> implements IExamView {
   Widget _buildResultView() {
     final attempt = _attempt!;
     return Center(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            attempt.passed ? Icons.check_circle : Icons.cancel,
-            size: 64,
-            color: attempt.passed ? Colors.green : Colors.red,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            attempt.passed ? 'Congratulations!' : 'Keep trying!',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text('Score: ${attempt.score.toStringAsFixed(1)}'),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: () => _presenter.navigateAfterExam(),
-            child: const Text('Done'),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              attempt.passed ? Icons.check_circle : Icons.cancel,
+              size: 64,
+              color: attempt.passed ? Colors.green : Colors.red,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              attempt.passed ? 'Congratulations!' : 'Keep trying!',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 8),
+            Text('Score: ${attempt.score.toStringAsFixed(1)}'),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => _presenter.navigateAfterExam(),
+              child: const Text('Done'),
+            ),
+          ],
+        ),
       ),
     );
   }

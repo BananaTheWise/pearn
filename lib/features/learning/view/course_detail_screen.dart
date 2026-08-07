@@ -2,11 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/di.dart';
-import '../../../core/models/enrollment.dart';
+import '../../../features/learning/model/enrollment.dart';
 import '../../learning/model/chapter.dart';
 import '../../learning/model/course.dart';
 import '../../learning/presenter/course_detail_presenter.dart';
 import '../../learning/view/i_course_detail_view.dart';
+import '../model/enrollment.dart';
 
 /// A set of available reaction emojis for courses.
 const List<String> kCourseReactions = ['👍', '❤️', '😄', '🎉', '🤔', '👀'];

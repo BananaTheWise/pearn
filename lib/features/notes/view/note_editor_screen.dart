@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/models/sync_status.dart';
 import '../../../core/di.dart';
 import '../../notes/model/note.dart';
 import '../../notes/model/note_context.dart';

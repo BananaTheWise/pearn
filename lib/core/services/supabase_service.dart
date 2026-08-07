@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Supabase SDK and expose the underlying client.  All backend access flows
 /// through this service.
 class SupabaseService {
+  bool get isReady => _initialised && _client != null;
   // ---------------------------------------------------------------------------
   // Singleton
   // ---------------------------------------------------------------------------

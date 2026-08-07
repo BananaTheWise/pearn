@@ -4,23 +4,34 @@ import 'package:get_it/get_it.dart';
 
 import 'core/di.dart';
 import 'core/services/theme_service.dart';
-import 'features/auth/model/auth_service.dart';
+import 'core/services/supabase_service.dart';
+
 import 'features/auth/view/login_screen.dart';
 import 'features/auth/view/signup_screen.dart';
+
+import 'features/shell/view/aop_shell.dart';
+
 import 'features/learning/view/course_catalog_screen.dart';
 import 'features/learning/view/course_detail_screen.dart';
 import 'features/learning/view/lesson_screen.dart';
 import 'features/learning/view/exercise_screen.dart';
 import 'features/learning/view/exam_screen.dart';
+
 import 'features/progress/view/progress_screen.dart';
 import 'features/progress/view/roadmap_screen.dart';
+
+import 'features/notes/model/note_context.dart';
 import 'features/notes/view/notes_list_screen.dart';
 import 'features/notes/view/note_editor_screen.dart';
+
 import 'features/profile/view/profile_screen.dart';
 import 'features/profile/view/edit_profile_screen.dart';
+
 import 'features/settings/view/settings_screen.dart';
+
 import 'features/tutor/view/tutor_dashboard_screen.dart';
 import 'features/tutor/view/course_editor_screen.dart';
+
 import 'features/admin/view/admin_dashboard_screen.dart';
 import 'features/admin/view/review_queue_screen.dart';
 
@@ -30,20 +41,26 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     debugPrint('[APP] Application widget initialized');
+
     final themeService = getIt<ThemeService>();
 
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeService,
       builder: (context, themeMode, _) {
         return MaterialApp(
-          title: 'Learning Platform',
+          title: 'Pearn',
+          debugShowCheckedModeBanner: false,
+
           themeMode: themeMode,
+
           theme: ThemeData.light().copyWith(
-            // Customize light theme if needed
+            useMaterial3: true,
           ),
+
           darkTheme: ThemeData.dark().copyWith(
-            // Customize dark theme if needed
+            useMaterial3: true,
           ),
+
           initialRoute: '/splash',
           onGenerateRoute: _generateRoute,
         );
@@ -54,37 +71,79 @@ class MyApp extends StatelessWidget {
   Route<dynamic>? _generateRoute(RouteSettings settings) {
     debugPrint('[APP][ROUTER] Route requested: ${settings.name}');
 
-    // Helper to wrap a screen with authentication check.
-    // For simplicity, we rely on AuthService stream to redirect globally.
-    // Individual screens do not need to check again.
-
     switch (settings.name) {
+      // ------------------------------------------------------------
+      // AUTH
+      // ------------------------------------------------------------
+
       case '/splash':
-        return MaterialPageRoute(builder: (_) => const SplashScreen());
-      case '/login':
-        return MaterialPageRoute(builder: (_) => const LoginScreen());
-      case '/signup':
-        return MaterialPageRoute(builder: (_) => const SignUpScreen());
-      case '/home':
-        // Home could be a shell with bottom navigation, or directly course catalog.
-        return MaterialPageRoute(builder: (_) => const CourseCatalogScreen());
-      case '/courses':
-        return MaterialPageRoute(builder: (_) => const CourseCatalogScreen());
-      case '/course-detail':
-        final courseId = settings.arguments as String;
         return MaterialPageRoute(
-          builder: (_) => CourseDetailScreen(courseId: courseId),
+          builder: (_) => const SplashScreen(),
         );
+
+      case '/login':
+        return MaterialPageRoute(
+          builder: (_) => const LoginScreen(),
+        );
+
+      case '/signup':
+        return MaterialPageRoute(
+          builder: (_) => const SignUpScreen(),
+        );
+
+      // ------------------------------------------------------------
+      // LEARNING
+      // ------------------------------------------------------------
+
+      case '/home':
+        return MaterialPageRoute(
+          builder: (_) => const AppShell(),
+        );
+
+      case '/courses':
+        return MaterialPageRoute(
+          builder: (_) => const CourseCatalogScreen(),
+        );
+
+      case '/course-detail':
+        final courseId = settings.arguments as String?;
+
+        if (courseId == null) {
+          return _errorRoute('Course ID is missing.');
+        }
+
+        return MaterialPageRoute(
+          builder: (_) => CourseDetailScreen(
+            courseId: courseId,
+          ),
+        );
+
       case '/lesson':
-        final args = settings.arguments as Map<String, String>;
+        final args = settings.arguments as Map<String, String>?;
+
+        if (args == null ||
+            args['courseId'] == null ||
+            args['lessonId'] == null) {
+          return _errorRoute('Lesson information is missing.');
+        }
+
         return MaterialPageRoute(
           builder: (_) => LessonScreen(
             courseId: args['courseId']!,
             lessonId: args['lessonId']!,
           ),
         );
+
       case '/exercise':
-        final args = settings.arguments as Map<String, String>;
+        final args = settings.arguments as Map<String, String>?;
+
+        if (args == null ||
+            args['courseId'] == null ||
+            args['lessonId'] == null ||
+            args['exerciseId'] == null) {
+          return _errorRoute('Exercise information is missing.');
+        }
+
         return MaterialPageRoute(
           builder: (_) => ExerciseScreen(
             courseId: args['courseId']!,
@@ -92,21 +151,46 @@ class MyApp extends StatelessWidget {
             exerciseId: args['exerciseId']!,
           ),
         );
+
       case '/exam':
         final examId = settings.arguments as String? ?? '';
+
         return MaterialPageRoute(
-          builder: (_) => ExamScreen(examId: examId),
+          builder: (_) => ExamScreen(
+            examId: examId,
+          ),
         );
+
+      // ------------------------------------------------------------
+      // PROGRESS
+      // ------------------------------------------------------------
+
       case '/progress':
-        return MaterialPageRoute(builder: (_) => const ProgressScreen());
+        return MaterialPageRoute(
+          builder: (_) => const ProgressScreen(),
+        );
+
       case '/roadmap':
-        return MaterialPageRoute(builder: (_) => const RoadmapScreen());
+        return MaterialPageRoute(
+          builder: (_) => const RoadmapScreen(),
+        );
+
+      // ------------------------------------------------------------
+      // NOTES
+      // ------------------------------------------------------------
+
       case '/notes':
-        return MaterialPageRoute(builder: (_) => const NotesListScreen());
+        return MaterialPageRoute(
+          builder: (_) => const NotesListScreen(),
+        );
+
       case '/note-editor':
-        final noteContext = settings.arguments as Map<String, String>?;
-        if (noteContext != null) {
-          // Open editor with context (create new note)
+        final noteContext =
+            settings.arguments as Map<String, String>?;
+
+        if (noteContext != null &&
+            noteContext['courseId'] != null &&
+            noteContext['lessonId'] != null) {
           return MaterialPageRoute(
             builder: (_) => NoteEditorScreen(
               noteContext: NoteContext(
@@ -116,36 +200,101 @@ class MyApp extends StatelessWidget {
             ),
           );
         }
-        // If no arguments, maybe just open list? Fallback.
-        return MaterialPageRoute(builder: (_) => const NotesListScreen());
+
+        return MaterialPageRoute(
+          builder: (_) => const NotesListScreen(),
+        );
+
+      // ------------------------------------------------------------
+      // PROFILE
+      // ------------------------------------------------------------
+
       case '/profile':
-        return MaterialPageRoute(builder: (_) => const ProfileScreen());
+        return MaterialPageRoute(
+          builder: (_) => const ProfileScreen(),
+        );
+
       case '/edit-profile':
-        return MaterialPageRoute(builder: (_) => const EditProfileScreen());
+        return MaterialPageRoute(
+          builder: (_) => const EditProfileScreen(),
+        );
+
+      // ------------------------------------------------------------
+      // SETTINGS
+      // ------------------------------------------------------------
+
       case '/settings':
-        return MaterialPageRoute(builder: (_) => const SettingsScreen());
+        return MaterialPageRoute(
+          builder: (_) => const SettingsScreen(),
+        );
+
+      // ------------------------------------------------------------
+      // TUTOR
+      // ------------------------------------------------------------
+
       case '/tutor-dashboard':
-        return MaterialPageRoute(builder: (_) => const TutorDashboardScreen());
+        return MaterialPageRoute(
+          builder: (_) => const TutorDashboardScreen(),
+        );
+
       case '/tutor-course-editor':
         final courseId = settings.arguments as String?;
+
         return MaterialPageRoute(
-          builder: (_) => TutorCourseEditorScreen(courseId: courseId),
-        );
-      case '/admin-dashboard':
-        return MaterialPageRoute(builder: (_) => const AdminDashboardScreen());
-      case '/admin-course-review':
-        return MaterialPageRoute(builder: (_) => const ReviewQueueScreen());
-      default:
-        return MaterialPageRoute(
-          builder: (_) => Scaffold(
-            body: Center(child: Text('Unknown route: ${settings.name}')),
+          builder: (_) => TutorCourseEditorScreen(
+            courseId: courseId,
           ),
+        );
+
+      // ------------------------------------------------------------
+      // ADMIN
+      // ------------------------------------------------------------
+
+      case '/admin-dashboard':
+        return MaterialPageRoute(
+          builder: (_) => const AdminDashboardScreen(),
+        );
+
+      case '/admin-course-review':
+        return MaterialPageRoute(
+          builder: (_) => const ReviewQueueScreen(),
+        );
+
+      // ------------------------------------------------------------
+      // UNKNOWN ROUTE
+      // ------------------------------------------------------------
+
+      default:
+        return _errorRoute(
+          'Unknown route: ${settings.name}',
         );
     }
   }
+
+  Route<dynamic> _errorRoute(String message) {
+    return MaterialPageRoute(
+      builder: (_) => Scaffold(
+        appBar: AppBar(
+          title: const Text('Error'),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              message,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-/// Splash screen that listens to auth state and redirects accordingly.
+// ============================================================================
+// OFFLINE SPLASH SCREEN
+// ============================================================================
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -157,60 +306,37 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _checkAuth();
+
+    _startApplication();
   }
 
-  Future<void> _checkAuth() async {
-    final authService = getIt<AuthService>();
-    final initialAuthState = authService.authStateChanges()
-        .first; // wait for the first emission
+  Future<void> _startApplication() async {
+    debugPrint('[SPLASH] Starting offline application');
 
-    // We can't use 'await' on a stream directly; we'll subscribe.
-    // A better approach is to use a StreamBuilder in the SplashScreen's build,
-    // but to keep it simple we'll listen for one value.
-    // Actually, we can do:
-    final subscription = authService.authStateChanges().listen((state) {
-      if (state == AuthState.authenticated) {
-        // Navigate to home or appropriate role-based route
-        _navigateToHome();
-      } else if (state == AuthState.unauthenticated) {
-        Navigator.of(context).pushReplacementNamed('/login');
-      }
-      // if loading, stay on splash
-    });
+    // Give the application a small amount of time to initialize.
+    await Future.delayed(
+      const Duration(milliseconds: 500),
+    );
 
-    // Cancel after first emission that resolves
-    subscription.onData((state) {
-      if (state != AuthState.loading) {
-        subscription.cancel();
-      }
-    });
-  }
+    if (!mounted) return;
 
-  void _navigateToHome() {
-    // Determine role-based home
-    final userId = getIt<SupabaseService>().client.auth.currentUser?.id;
-    if (userId != null) {
-      final userRepo = getIt<UserRepository>();
-      userRepo.findById(userId).then((user) {
-        if (user != null) {
-          switch (user.role) {
-            case 'admin':
-              Navigator.of(context).pushReplacementNamed('/admin-dashboard');
-              break;
-            case 'tutor':
-              Navigator.of(context).pushReplacementNamed('/tutor-dashboard');
-              break;
-            default:
-              Navigator.of(context).pushReplacementNamed('/home');
-          }
-        } else {
-          Navigator.of(context).pushReplacementNamed('/home');
-        }
-      }).catchError((_) {
-        Navigator.of(context).pushReplacementNamed('/home');
-      });
+    // If Supabase never came online (e.g. no internet), fall back to
+    // offline/guest mode rather than blocking the user with a login screen
+    // they have no way to satisfy.
+    if (!SupabaseService.instance.isReady) {
+      debugPrint('[SPLASH] Supabase unavailable — continuing offline as guest');
+      Navigator.of(context).pushReplacementNamed('/home');
+      return;
+    }
+
+    final hasSession =
+        SupabaseService.instance.client.auth.currentSession != null;
+
+    if (hasSession) {
+      debugPrint('[SPLASH] Existing session found');
+      Navigator.of(context).pushReplacementNamed('/home');
     } else {
+      debugPrint('[SPLASH] No session — routing to login');
       Navigator.of(context).pushReplacementNamed('/login');
     }
   }
@@ -218,7 +344,9 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
     );
   }
 }

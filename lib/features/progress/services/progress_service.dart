@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../auth/model/user_repository.dart';
-import '../../core/models/user.dart';
+import '../../../core/models/user.dart';
 import '../../progress/model/progress_repository.dart';
 import '../../progress/services/streak_service.dart';
 

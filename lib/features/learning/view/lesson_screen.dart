@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
@@ -85,9 +84,9 @@ class _LessonScreenState extends State<LessonScreen> implements ILessonView {
     setState(() {
       _isCompleted = true;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Lesson marked as completed')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Lesson marked as completed')));
   }
 
   @override
@@ -132,10 +131,10 @@ class _LessonScreenState extends State<LessonScreen> implements ILessonView {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? _buildErrorView()
-              : _lesson == null
-                  ? const Center(child: Text('Lesson not found'))
-                  : _buildContent(),
+          ? _buildErrorView()
+          : _lesson == null
+          ? const Center(child: Text('Lesson not found'))
+          : _buildContent(),
     );
   }
 
@@ -162,7 +161,9 @@ class _LessonScreenState extends State<LessonScreen> implements ILessonView {
       child: LayoutBuilder(
         builder: (context, constraints) {
           // Use wider max width for readability on desktop.
-          final maxWidth = constraints.maxWidth > 800 ? 800.0 : constraints.maxWidth;
+          final maxWidth = constraints.maxWidth > 800
+              ? 800.0
+              : constraints.maxWidth;
           return Center(
             child: SizedBox(
               width: maxWidth,
@@ -185,15 +186,17 @@ class _LessonScreenState extends State<LessonScreen> implements ILessonView {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 8),
-                    ..._exercises.map((exercise) => Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            title: Text(exercise.question),
-                            subtitle: Text('Type: ${exercise.type}'),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => navigateToExercise(exercise.id),
-                          ),
-                        )),
+                    ..._exercises.map(
+                      (exercise) => Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          title: Text(exercise.question),
+                          subtitle: Text('Type: ${exercise.type}'),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => navigateToExercise(exercise.id),
+                        ),
+                      ),
+                    ),
                   ],
                 ],
               ),
@@ -201,6 +204,97 @@ class _LessonScreenState extends State<LessonScreen> implements ILessonView {
           );
         },
       ),
+    );
+  }
+
+  String? _currentExerciseId;
+  @override
+  void navigateToNextExercise() {
+    if (_exercises.isEmpty) {
+      showCompletion();
+      return;
+    }
+
+    final currentIndex = _currentExerciseId == null
+        ? -1
+        : _exercises.indexWhere(
+            (exercise) => exercise.id == _currentExerciseId,
+          );
+
+    final nextIndex = currentIndex + 1;
+
+    // No more exercises.
+    if (nextIndex >= _exercises.length) {
+      showCompletion();
+      return;
+    }
+
+    final nextExercise = _exercises[nextIndex];
+
+    _currentExerciseId = nextExercise.id;
+
+    debugPrint('[UI][LESSON] Navigating to next exercise: ${nextExercise.id}');
+
+    Navigator.pushNamed(
+      context,
+      '/exercise',
+      arguments: {
+        'courseId': widget.courseId,
+        'lessonId': widget.lessonId,
+        'exerciseId': nextExercise.id,
+      },
+    );
+  }
+
+  @override
+  void showCompletion() {
+    if (!mounted) return;
+
+    setState(() {
+      _isCompleted = true;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Lesson completed!'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    debugPrint('[UI][LESSON] Lesson completion displayed');
+  }
+
+  @override
+  void showResult(bool correct, String? explanation) {
+    if (!mounted) return;
+
+    final message = correct ? 'Correct! 🎉' : 'Incorrect';
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(message),
+          content: explanation == null || explanation.trim().isEmpty
+              ? Text(
+                  correct
+                      ? 'Well done!'
+                      : 'Try reviewing the lesson and attempt it again.',
+                )
+              : Text(explanation),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+
+    debugPrint(
+      '[UI][LESSON] Exercise result: '
+      '${correct ? 'correct' : 'incorrect'}',
     );
   }
 }

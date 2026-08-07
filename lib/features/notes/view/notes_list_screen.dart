@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/models/sync_status.dart';
 import '../../../core/di.dart';
 import '../../notes/model/note.dart';
 import '../../notes/model/note_context.dart';
@@ -338,13 +339,4 @@ class _NotesListScreenState extends State<NotesListScreen> implements INoteView 
         return const Icon(Icons.cloud_off, color: Colors.red);
     }
   }
-}
-
-// Minimal NoteContext (should be defined in its own file).
-// This is included here for compilation completeness.
-class NoteContext {
-  final String courseId;
-  final String lessonId;
-
-  const NoteContext({required this.courseId, required this.lessonId});
 }

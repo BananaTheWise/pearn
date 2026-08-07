@@ -5,7 +5,7 @@ import '../../../core/di.dart';
 import '../../../core/models/user.dart';
 import '../model/admin_repository.dart';
 import '../view/i_admin_view.dart';
-import 'admin_dashboard_presenter.dart'; // defined below
+import '../presenter/admin_dashboard_presenter.dart'; // defined below
 
 /// Main Admin control panel.
 ///
