@@ -5,11 +5,12 @@ import 'package:get_it/get_it.dart';
 import 'core/di.dart';
 import 'core/services/theme_service.dart';
 import 'core/services/supabase_service.dart';
+import 'core/utils/platform_utils.dart';
 
 import 'features/auth/view/login_screen.dart';
 import 'features/auth/view/signup_screen.dart';
 
-import 'features/shell/view/aop_shell.dart';
+import 'features/shell/view/app_shell.dart';
 
 import 'features/learning/view/course_catalog_screen.dart';
 import 'features/learning/view/course_detail_screen.dart';
@@ -233,11 +234,13 @@ class MyApp extends StatelessWidget {
       // ------------------------------------------------------------
 
       case '/tutor-dashboard':
+        if (PlatformUtils.isMobile) return _desktopOnlyRoute();
         return MaterialPageRoute(
           builder: (_) => const TutorDashboardScreen(),
         );
 
       case '/tutor-course-editor':
+        if (PlatformUtils.isMobile) return _desktopOnlyRoute();
         final courseId = settings.arguments as String?;
 
         return MaterialPageRoute(
@@ -251,11 +254,13 @@ class MyApp extends StatelessWidget {
       // ------------------------------------------------------------
 
       case '/admin-dashboard':
+        if (PlatformUtils.isMobile) return _desktopOnlyRoute();
         return MaterialPageRoute(
           builder: (_) => const AdminDashboardScreen(),
         );
 
       case '/admin-course-review':
+        if (PlatformUtils.isMobile) return _desktopOnlyRoute();
         return MaterialPageRoute(
           builder: (_) => const ReviewQueueScreen(),
         );
@@ -269,6 +274,23 @@ class MyApp extends StatelessWidget {
           'Unknown route: ${settings.name}',
         );
     }
+  }
+
+  Route<dynamic> _desktopOnlyRoute() {
+    return MaterialPageRoute(
+      builder: (_) => Scaffold(
+        appBar: AppBar(title: const Text('Not available')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Admin and tutor tools are only available on desktop.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Route<dynamic> _errorRoute(String message) {

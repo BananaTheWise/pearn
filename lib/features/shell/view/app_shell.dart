@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/di.dart';
 import '../../../core/models/user.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/utils/platform_utils.dart';
 
 import '../../auth/model/user_repository.dart';
 import '../../auth/presenter/auth_presenter.dart';
@@ -128,26 +129,29 @@ class _AppShellState extends State<AppShell> {
 
     final role = _currentUser?.role;
 
-    if (role == User.roleTutor || role == User.roleAdmin) {
-      destinations.add(
-        const _ShellDestination(
-          label: 'Teaching',
-          icon: Icons.school_outlined,
-          selectedIcon: Icons.school,
-          page: TutorDashboardScreen(),
-        ),
-      );
-    }
+    // Admin and tutor tooling is desktop-only, regardless of role.
+    if (PlatformUtils.isDesktop) {
+      if (role == User.roleTutor || role == User.roleAdmin) {
+        destinations.add(
+          const _ShellDestination(
+            label: 'Teaching',
+            icon: Icons.school_outlined,
+            selectedIcon: Icons.school,
+            page: TutorDashboardScreen(),
+          ),
+        );
+      }
 
-    if (role == User.roleAdmin) {
-      destinations.add(
-        const _ShellDestination(
-          label: 'Admin',
-          icon: Icons.admin_panel_settings_outlined,
-          selectedIcon: Icons.admin_panel_settings,
-          page: AdminDashboardScreen(),
-        ),
-      );
+      if (role == User.roleAdmin) {
+        destinations.add(
+          const _ShellDestination(
+            label: 'Admin',
+            icon: Icons.admin_panel_settings_outlined,
+            selectedIcon: Icons.admin_panel_settings,
+            page: AdminDashboardScreen(),
+          ),
+        );
+      }
     }
 
     return destinations;
