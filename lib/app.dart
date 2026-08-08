@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:pearn/features/settings/view/about_screen.dart';
+import 'package:pearn/features/settings/view/create_course_screen.dart';
+import 'package:pearn/features/settings/view/terms_screen.dart';
 
 import 'core/di.dart';
 import 'core/services/theme_service.dart';
@@ -283,6 +286,26 @@ class MyApp extends StatelessWidget {
         if (PlatformUtils.isMobile) return _desktopOnlyRoute();
         return MaterialPageRoute(
           builder: (_) => const ReviewQueueScreen(),
+        );
+
+      // ------------------------------------------------------------
+      // Settings ROUTE
+      // ------------------------------------------------------------
+
+
+      case '/about':
+        return MaterialPageRoute(
+          builder: (_) => const AboutScreen(),
+        );
+
+      case '/terms':
+        return MaterialPageRoute(
+          builder: (_) => const TermsScreen(),
+        );
+
+      case '/create-course':
+        return MaterialPageRoute(
+          builder: (_) => const CreateCourseScreen(),
         );
 
       // ------------------------------------------------------------

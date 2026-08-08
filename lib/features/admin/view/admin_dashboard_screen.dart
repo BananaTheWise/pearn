@@ -50,11 +50,32 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     _presenter.verifyAdminAccess(); // will load initial data or redirect
   }
 
+  @override
+  void dispose() {
+    // CRITICAL: without this, the presenter keeps a live reference to this
+    // State object. If it outlives the widget (e.g. the shell swaps tabs or
+    // the user signs out while a request is in flight), any pending
+    // callback will call setState()/ScaffoldMessenger on a deactivated
+    // widget and throw "Looking up a deactivated widget's ancestor is
+    // unsafe" — which then corrupts the current frame and cascades into
+    // render-layer assertion failures on every subsequent frame.
+    debugPrint('[UI][ADMIN] Admin dashboard disposed');
+    _presenter.dispose();
+    super.dispose();
+  }
+
   // ---------------------------------------------------------------------------
   // IAdminView implementation
+  //
+  // Every method here is a callback the presenter can fire *after* an await
+  // completes, at which point this State may no longer be mounted even if
+  // dispose() above hasn't run yet (there's an unavoidable race between the
+  // await resolving and the dispose call landing). `mounted` guards make
+  // each callback a no-op instead of a crash in that window.
   // ---------------------------------------------------------------------------
   @override
   void showLoading(bool loading) {
+    if (!mounted) return;
     setState(() {
       _isLoading = loading;
       if (loading) _errorMessage = null;
@@ -63,6 +84,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   @override
   void showUsers(List<User> users) {
+    if (!mounted) return;
     setState(() {
       _users = users;
     });
@@ -70,6 +92,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   @override
   void showTutors(List<User> tutors) {
+    if (!mounted) return;
     setState(() {
       _tutors = tutors;
     });
@@ -77,6 +100,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   @override
   void showPendingCourses(List<Map<String, dynamic>> courses) {
+    if (!mounted) return;
     setState(() {
       _pendingCourses = courses;
     });
@@ -84,6 +108,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   @override
   void showReports(List<Map<String, dynamic>> reports) {
+    if (!mounted) return;
     setState(() {
       _reports = reports;
     });
@@ -91,6 +116,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   @override
   void showAnalytics(Map<String, dynamic> data) {
+    if (!mounted) return;
     setState(() {
       _analytics = data;
     });
@@ -98,6 +124,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   @override
   void showSystemStatus(Map<String, dynamic> status) {
+    if (!mounted) return;
     setState(() {
       _systemStatus = status;
     });
@@ -105,6 +132,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   @override
   Future<bool> showConfirmation(String message) async {
+    if (!mounted) return false;
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -127,6 +155,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   @override
   void showError(String message) {
+    if (!mounted) return;
     setState(() {
       _errorMessage = message;
     });

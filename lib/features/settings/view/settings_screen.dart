@@ -142,27 +142,37 @@ class _SettingsScreenState extends State<SettingsScreen> implements ISettingsVie
             },
           ),
           ListTile(
+            leading: const Icon(Icons.school),
+            title: const Text('Create Course'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _isLoading
+                ? null
+                : () => Navigator.pushNamed(context, '/create-course'),
+          ),
+          ListTile(
             leading: const Icon(Icons.logout),
             title: const Text('Logout'),
             onTap: _isLoading ? null : _onLogout,
           ),
           const Divider(),
 
-          // About / policies (links only if routes exist)
+          // About / policies
           const _SectionHeader(title: 'About'),
           ListTile(
             leading: const Icon(Icons.description),
             title: const Text('Terms & Conditions'),
-            onTap: () {
-              // Navigate to a policy page if implemented
-            },
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _isLoading
+                ? null
+                : () => Navigator.pushNamed(context, '/terms'),
           ),
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('About'),
-            onTap: () {
-              // Navigate to about page if implemented
-            },
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _isLoading
+                ? null
+                : () => Navigator.pushNamed(context, '/about'),
           ),
         ],
       ),
