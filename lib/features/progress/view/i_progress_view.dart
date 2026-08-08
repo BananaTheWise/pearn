@@ -23,4 +23,7 @@ abstract class IProgressView {
 
   /// Displays the current user level.
   void showLevel(int level);
+
+  /// Displays the user's total XP.
+  void showXp(int xp);
 }

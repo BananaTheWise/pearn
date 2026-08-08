@@ -64,6 +64,19 @@ class MyApp extends StatelessWidget {
 
           initialRoute: '/splash',
           onGenerateRoute: _generateRoute,
+          // IMPORTANT: without this override, Flutter's default initial-route
+          // handling splits `initialRoute` by '/' and pushes a synthetic route
+          // for every prefix — including a bare '/' — before pushing '/splash'.
+          // Since '/' isn't a case in _generateRoute, that becomes a hidden
+          // "Unknown route: /" error screen sitting under the real app.
+          // pushReplacementNamed only swaps the top of the stack, so that
+          // hidden screen survives and is what you land on when you press
+          // back from any shell tab. Generating only the real initial route
+          // here removes the phantom entry entirely.
+          onGenerateInitialRoutes: (initialRoute) {
+            final route = _generateRoute(RouteSettings(name: initialRoute));
+            return [if (route != null) route];
+          },
         );
       },
     );
@@ -154,11 +167,18 @@ class MyApp extends StatelessWidget {
         );
 
       case '/exam':
-        final examId = settings.arguments as String? ?? '';
+        final args = settings.arguments as Map<String, String>?;
+
+        if (args == null ||
+            args['courseId'] == null ||
+            args['examId'] == null) {
+          return _errorRoute('Exam information is missing.');
+        }
 
         return MaterialPageRoute(
           builder: (_) => ExamScreen(
-            examId: examId,
+            courseId: args['courseId']!,
+            examId: args['examId']!,
           ),
         );
 

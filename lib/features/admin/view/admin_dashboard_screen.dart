@@ -33,6 +33,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   Map<String, dynamic> _analytics = {};
   Map<String, dynamic> _systemStatus = {};
 
+  static const List<_AdminTab> _tabs = [
+    _AdminTab(icon: Icons.analytics, label: 'Analytics'),
+    _AdminTab(icon: Icons.school, label: 'Courses'),
+    _AdminTab(icon: Icons.people, label: 'Users'),
+    _AdminTab(icon: Icons.person_search, label: 'Tutors'),
+    _AdminTab(icon: Icons.report, label: 'Reports'),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -152,63 +160,52 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     final isWide = MediaQuery.of(context).size.width > 600;
     return Scaffold(
       appBar: AppBar(title: const Text('Admin Dashboard')),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-              ? Center(child: Text(_errorMessage!))
-              : _buildTabContent(),
+      body: isWide
+          ? Row(
+              children: [
+                _buildNavigationRail(),
+                const VerticalDivider(width: 1),
+                Expanded(child: _buildBody()),
+              ],
+            )
+          : _buildBody(),
       bottomNavigationBar: isWide
           ? null
           : BottomNavigationBar(
               currentIndex: _currentTabIndex,
               onTap: _onTabTapped,
               type: BottomNavigationBarType.fixed,
-              items: const [
-                BottomNavigationBarItem(icon: Icon(Icons.analytics), label: 'Analytics'),
-                BottomNavigationBarItem(icon: Icon(Icons.school), label: 'Courses'),
-                BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Users'),
-                BottomNavigationBarItem(icon: Icon(Icons.person_search), label: 'Tutors'),
-                BottomNavigationBarItem(icon: Icon(Icons.report), label: 'Reports'),
-              ],
+              items: _tabs
+                  .map((tab) => BottomNavigationBarItem(
+                        icon: Icon(tab.icon),
+                        label: tab.label,
+                      ))
+                  .toList(),
             ),
-      drawer: isWide
-          ? null
-          : Drawer(
-              child: ListView(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.analytics),
-                    title: const Text('Analytics'),
-                    selected: _currentTabIndex == 0,
-                    onTap: () { _onTabTapped(0); Navigator.pop(context); },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.school),
-                    title: const Text('Courses'),
-                    selected: _currentTabIndex == 1,
-                    onTap: () { _onTabTapped(1); Navigator.pop(context); },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.people),
-                    title: const Text('Users'),
-                    selected: _currentTabIndex == 2,
-                    onTap: () { _onTabTapped(2); Navigator.pop(context); },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.person_search),
-                    title: const Text('Tutors'),
-                    selected: _currentTabIndex == 3,
-                    onTap: () { _onTabTapped(3); Navigator.pop(context); },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.report),
-                    title: const Text('Reports'),
-                    selected: _currentTabIndex == 4,
-                    onTap: () { _onTabTapped(4); Navigator.pop(context); },
-                  ),
-                ],
-              ),
-            ),
+    );
+  }
+
+  Widget _buildBody() {
+    return _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : _errorMessage != null
+            ? Center(child: Text(_errorMessage!))
+            : _buildTabContent();
+  }
+
+  /// Persistent side navigation shown on wide screens instead of the
+  /// bottom nav bar, so tabs remain switchable when width > 600.
+  Widget _buildNavigationRail() {
+    return NavigationRail(
+      selectedIndex: _currentTabIndex,
+      onDestinationSelected: _onTabTapped,
+      labelType: NavigationRailLabelType.all,
+      destinations: _tabs
+          .map((tab) => NavigationRailDestination(
+                icon: Icon(tab.icon),
+                label: Text(tab.label),
+              ))
+          .toList(),
     );
   }
 
@@ -362,4 +359,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       ),
     );
   }
+}
+
+/// Simple value object describing one admin dashboard tab.
+class _AdminTab {
+  final IconData icon;
+  final String label;
+
+  const _AdminTab({required this.icon, required this.label});
 }

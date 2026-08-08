@@ -1,4 +1,5 @@
 import '../model/student_stat.dart';
+import '../model/student_summary.dart';
 
 /// Abstract contract for tutor-related data operations.
 ///
@@ -13,12 +14,13 @@ abstract class TutorRepository {
   /// courses under review, etc.). The exact keys are defined by the architecture.
   Future<Map<String, dynamic>> getDashboardData(String tutorId);
 
-  /// Returns the list of students enrolled in courses managed by the tutor.
-  Future<List<String>> getStudentsForTutor(String tutorId);
+  /// Returns the students enrolled in courses managed by the tutor,
+  /// including their display username.
+  Future<List<StudentSummary>> getStudentsForTutor(String tutorId);
 
   /// Retrieves statistics for a specific student in a course.
   Future<StudentStat?> getStudentStat(
-      String tutorId, String studentId, String courseId);
+      String tutorId, String studentId, int courseId);
 
   /// Submits a course (new or updated) for admin review via GitHub pull request.
   ///
@@ -30,5 +32,5 @@ abstract class TutorRepository {
       Map<String, dynamic> courseData, String tutorId);
 
   /// Returns a list of course IDs that are owned or managed by the tutor.
-  Future<List<String>> getManagedCourseIds(String tutorId);
+  Future<List<int>> getManagedCourseIds(String tutorId);
 }

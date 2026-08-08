@@ -1,27 +1,36 @@
 import 'package:flutter/foundation.dart';
 
 import '../../learning/model/course_repository.dart';
-import '../../learning/model/exercise.dart';
 import '../../learning/view/i_lesson_view.dart';
-import '../../progress/model/progress_repository.dart';
-
+import '../../progress/services/progress_service.dart';
 
 /// Coordinates between the lesson UI and the [CourseRepository].
 ///
-/// Optionally uses a [ProgressRepository] to persist lesson completion.
+/// Uses [ProgressService] to persist lesson completion, award XP, and
+/// update the user's level/streak (rather than writing to the progress
+/// repository directly, which would skip all of that business logic).
+///
+/// Note: exercises are no longer loaded here. Exercises are shown once
+/// per chapter (see [ExercisePresenter.loadChapterExercises]), not
+/// embedded inside every lesson.
 class LessonPresenter {
   final CourseRepository _courseRepository;
-  final ProgressRepository? _progressRepository;
+  final ProgressService? _progressService;
   final String _userId;
   ILessonView? _view;
+
+  // The course/lesson currently being viewed. Populated by [loadLesson]
+  // so that [markLessonCompleted] knows what to persist.
+  String? _currentCourseId;
+  String? _currentLessonId;
 
   LessonPresenter({
     required CourseRepository courseRepo,
     required String userId,
-    ProgressRepository? progressRepo,
+    ProgressService? progressService,
   })  : _courseRepository = courseRepo,
         _userId = userId,
-        _progressRepository = progressRepo;
+        _progressService = progressService;
 
   /// Attaches the view that will receive UI updates.
   set view(ILessonView? view) {
@@ -29,7 +38,7 @@ class LessonPresenter {
   }
 
   // ---------------------------------------------------------------------------
-  // 1. Load lesson and exercises
+  // 1. Load lesson
   // ---------------------------------------------------------------------------
   Future<void> loadLesson(String courseId, String lessonId) async {
     debugPrint('[PRESENTER][LESSON] Loading lesson');
@@ -42,11 +51,13 @@ class LessonPresenter {
         return;
       }
 
+      // Remember which lesson is open so markLessonCompleted() has
+      // something to save.
+      _currentCourseId = courseId;
+      _currentLessonId = lessonId;
+
       _view?.showLesson(lesson);
       debugPrint('[PRESENTER][LESSON] Lesson loaded');
-
-      // Load exercises for this lesson
-      await _loadExercises(courseId, lessonId);
     } catch (e) {
       debugPrint('[PRESENTER][LESSON] Lesson loading failed');
       _view?.showError('Unable to load lesson. Please try again.');
@@ -56,52 +67,33 @@ class LessonPresenter {
   }
 
   // ---------------------------------------------------------------------------
-  // 2. Open exercise
-  // ---------------------------------------------------------------------------
-  void openExercise(String exerciseId) {
-    if (exerciseId.trim().isEmpty) {
-      _view?.showError('Invalid exercise identifier.');
-      return;
-    }
-    _view?.navigateToExercise(exerciseId);
-  }
-
-  // ---------------------------------------------------------------------------
-  // 3. Mark lesson completed
+  // 2. Mark lesson completed
   // ---------------------------------------------------------------------------
   Future<void> markLessonCompleted() async {
-    if (_progressRepository == null) {
-      // Completion tracking not available; just notify the view.
+    if (_progressService == null) {
+      debugPrint('[PRESENTER][LESSON] No ProgressService — skipping persistence');
       _view?.markLessonCompleted();
       return;
     }
 
+    if (_currentCourseId == null || _currentLessonId == null) {
+      debugPrint('[PRESENTER][LESSON] No lesson loaded — cannot mark completed');
+      _view?.showError('Could not save progress.');
+      return;
+    }
+
     try {
-      // The presenter needs to know which course/lesson is currently open.
-      // In a full implementation, store courseId/lessonId when loading.
-      // For brevity we assume they are held as fields in a real scenario.
-      // This method would then call _progressRepository.markLessonCompleted(...)
-      // but since we don't have them stored, we simply notify the view.
+      await _progressService.completeLesson(
+        _userId,
+        _currentCourseId!,
+        _currentLessonId!,
+      );
+      debugPrint('[PRESENTER][LESSON] Lesson completion persisted');
       _view?.markLessonCompleted();
     } catch (e) {
       debugPrint('[PRESENTER][LESSON] Failed to mark lesson completed');
+      debugPrint('Reason: $e');
       _view?.showError('Could not save progress.');
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Private helpers
-  // ---------------------------------------------------------------------------
-  Future<void> _loadExercises(String courseId, String lessonId) async {
-    debugPrint('[PRESENTER][LESSON] Loading exercises');
-    try {
-      final exercises = await _courseRepository.getExercises(courseId, lessonId);
-      _view?.showExercises(exercises);
-      debugPrint('[PRESENTER][LESSON] Exercises loaded');
-    } catch (e) {
-      debugPrint('[PRESENTER][LESSON] Exercises loading failed');
-      // Non-fatal – show empty list
-      _view?.showExercises([]);
     }
   }
 }

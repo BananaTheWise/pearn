@@ -10,6 +10,7 @@ import '../../auth/model/user_repository.dart';
 import '../../auth/presenter/auth_presenter.dart';
 
 import '../../learning/view/course_catalog_screen.dart';
+import '../../notes/view/notes_list_screen.dart';
 import '../../progress/view/progress_screen.dart';
 import '../../profile/view/profile_screen.dart';
 import '../../settings/view/settings_screen.dart';
@@ -31,14 +32,21 @@ class _ShellDestination {
   });
 }
 
-/// Breakpoint below which we use a bottom nav bar; at or above it we use a
-/// side navigation rail instead.
+/// Below this width we use bottom navigation.
+/// At or above it we use NavigationRail.
 const double _kDesktopBreakpoint = 700;
 
-/// Root authenticated shell. Wraps Home / Courses / Progress / Profile /
-/// Settings, plus role-specific tabs (Tutor, Admin) once we know who's
-/// signed in. Renders as a bottom nav bar on narrow screens and a side rail
-/// on wide ones.
+/// Root authenticated application shell.
+///
+/// Contains:
+/// - Home
+/// - Courses
+/// - Progress
+/// - Notes
+/// - Profile
+/// - Settings
+/// - Teaching (desktop tutor/admin only)
+/// - Admin (desktop admin only)
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -48,6 +56,7 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
+
   late final AuthPresenter _authPresenter;
 
   User? _currentUser;
@@ -56,40 +65,70 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
+
     debugPrint('[UI][SHELL] App shell initialized');
+
     _authPresenter = getIt<AuthPresenter>();
+
     _loadCurrentUser();
   }
 
   Future<void> _loadCurrentUser() async {
-    // Offline / no session: fall back to the default (student) tab set
-    // rather than blocking the shell from rendering at all.
     if (!SupabaseService.instance.isReady) {
-      debugPrint('[UI][SHELL] Supabase offline — using guest/student tabs');
-      setState(() => _loadingUser = false);
+      debugPrint(
+        '[UI][SHELL] Supabase offline — using guest/student tabs',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _loadingUser = false;
+      });
+
       return;
     }
 
     final authUser = SupabaseService.instance.client.auth.currentUser;
+
     if (authUser == null) {
-      debugPrint('[UI][SHELL] No authenticated user — using guest/student tabs');
-      setState(() => _loadingUser = false);
+      debugPrint(
+        '[UI][SHELL] No authenticated user — using guest/student tabs',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _loadingUser = false;
+      });
+
       return;
     }
 
     try {
       final userRepository = getIt<UserRepository>();
+
       final user = await userRepository.findById(authUser.id);
-      debugPrint('[UI][SHELL] Loaded profile with role: ${user?.role}');
+
+      debugPrint(
+        '[UI][SHELL] Loaded profile with role: ${user?.role}',
+      );
+
       if (!mounted) return;
+
       setState(() {
         _currentUser = user;
         _loadingUser = false;
       });
     } catch (e) {
-      debugPrint('[ERROR][UI][SHELL] Failed to load profile: $e');
+      debugPrint(
+        '[ERROR][UI][SHELL] Failed to load profile: $e',
+      );
+
       if (!mounted) return;
-      setState(() => _loadingUser = false);
+
+      setState(() {
+        _loadingUser = false;
+      });
     }
   }
 
@@ -114,6 +153,12 @@ class _AppShellState extends State<AppShell> {
         page: ProgressScreen(),
       ),
       const _ShellDestination(
+        label: 'Notes',
+        icon: Icons.note_alt_outlined,
+        selectedIcon: Icons.note_alt,
+        page: NotesListScreen(),
+      ),
+      const _ShellDestination(
         label: 'Profile',
         icon: Icons.person_outline,
         selectedIcon: Icons.person,
@@ -129,7 +174,7 @@ class _AppShellState extends State<AppShell> {
 
     final role = _currentUser?.role;
 
-    // Admin and tutor tooling is desktop-only, regardless of role.
+    // Tutor/admin tooling is desktop-only.
     if (PlatformUtils.isDesktop) {
       if (role == User.roleTutor || role == User.roleAdmin) {
         destinations.add(
@@ -158,27 +203,41 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _onDestinationSelected(int index) {
-    debugPrint('[UI][SHELL] Tab selected: $index');
-    setState(() => _selectedIndex = index);
+    debugPrint(
+      '[UI][SHELL] Tab selected: $index',
+    );
+
+    if (index < 0 || index >= _destinations.length) {
+      return;
+    }
+
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loadingUser) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
       );
     }
 
     final destinations = _destinations;
-    // Guard against a stale index if the destination list shrinks
-    // (e.g. role changed after a re-login).
+
+    // Protect against an old selected index when the role changes.
     final safeIndex =
-        _selectedIndex < destinations.length ? _selectedIndex : 0;
+        _selectedIndex >= 0 && _selectedIndex < destinations.length
+            ? _selectedIndex
+            : 0;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isDesktop = constraints.maxWidth >= _kDesktopBreakpoint;
+        final isDesktop =
+            constraints.maxWidth >= _kDesktopBreakpoint;
 
         if (isDesktop) {
           return Scaffold(
@@ -186,21 +245,26 @@ class _AppShellState extends State<AppShell> {
               children: [
                 NavigationRail(
                   selectedIndex: safeIndex,
-                  onDestinationSelected: _onDestinationSelected,
+                  onDestinationSelected:
+                      _onDestinationSelected,
                   labelType: constraints.maxWidth >= 1000
                       ? NavigationRailLabelType.none
                       : NavigationRailLabelType.selected,
                   extended: constraints.maxWidth >= 1000,
                   leading: const Padding(
                     padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Icon(Icons.school, size: 32),
+                    child: Icon(
+                      Icons.school,
+                      size: 32,
+                    ),
                   ),
                   destinations: [
-                    for (final d in destinations)
+                    for (final destination in destinations)
                       NavigationRailDestination(
-                        icon: Icon(d.icon),
-                        selectedIcon: Icon(d.selectedIcon),
-                        label: Text(d.label),
+                        icon: Icon(destination.icon),
+                        selectedIcon:
+                            Icon(destination.selectedIcon),
+                        label: Text(destination.label),
                       ),
                   ],
                 ),
@@ -208,7 +272,10 @@ class _AppShellState extends State<AppShell> {
                 Expanded(
                   child: IndexedStack(
                     index: safeIndex,
-                    children: [for (final d in destinations) d.page],
+                    children: [
+                      for (final destination in destinations)
+                        destination.page,
+                    ],
                   ),
                 ),
               ],
@@ -219,17 +286,22 @@ class _AppShellState extends State<AppShell> {
         return Scaffold(
           body: IndexedStack(
             index: safeIndex,
-            children: [for (final d in destinations) d.page],
+            children: [
+              for (final destination in destinations)
+                destination.page,
+            ],
           ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: safeIndex,
-            onDestinationSelected: _onDestinationSelected,
+            onDestinationSelected:
+                _onDestinationSelected,
             destinations: [
-              for (final d in destinations)
+              for (final destination in destinations)
                 NavigationDestination(
-                  icon: Icon(d.icon),
-                  selectedIcon: Icon(d.selectedIcon),
-                  label: d.label,
+                  icon: Icon(destination.icon),
+                  selectedIcon:
+                      Icon(destination.selectedIcon),
+                  label: destination.label,
                 ),
             ],
           ),

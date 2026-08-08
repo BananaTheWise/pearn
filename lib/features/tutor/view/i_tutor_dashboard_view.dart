@@ -1,4 +1,5 @@
 import '../../tutor/model/student_stat.dart';
+import '../../tutor/model/student_summary.dart';
 
 /// Abstract interface through which the tutor presenter communicates
 /// with the tutor dashboard UI.
@@ -12,9 +13,9 @@ abstract class ITutorDashboardView {
   /// Displays dashboard summary data (e.g., student count, course count).
   void showDashboard(Map<String, dynamic> data);
 
-  /// Shows the list of student IDs enrolled in the tutor's courses.
-  /// The actual student names can be resolved later.
-  void showStudents(List<String> studentIds);
+  /// Shows the students enrolled in the tutor's courses, with usernames
+  /// ready for display.
+  void showStudents(List<StudentSummary> students);
 
   /// Displays detailed statistics for a specific student in a course.
   void showStudentStats(StudentStat stats);

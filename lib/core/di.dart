@@ -8,6 +8,7 @@ import 'services/github_service.dart';
 import 'services/google_auth_service.dart';
 import 'services/connectivity_service.dart';
 import 'services/theme_service.dart';
+import 'services/course_id_resolver.dart';
 
 // ─── Auth feature ──────────────────────────────────────────
 import '../features/auth/model/auth_service.dart';
@@ -38,6 +39,7 @@ import '../features/progress/model/progress_repository_supabase.dart';
 import '../features/progress/model/roadmap_repository.dart';
 import '../features/progress/model/roadmap_repository_supabase.dart';
 import '../features/progress/services/streak_service.dart';
+import '../features/progress/services/progress_service.dart';
 import '../features/progress/presenter/progress_presenter.dart';
 import '../features/progress/presenter/roadmap_presenter.dart';
 
@@ -130,6 +132,11 @@ void _registerServices() {
 
   debugPrint('[DI] Registering ThemeService');
   getIt.registerSingleton(ThemeService());
+
+  debugPrint('[DI] Registering CourseIdResolver');
+  getIt.registerLazySingleton<CourseIdResolver>(
+    () => CourseIdResolver(getIt()),
+  );
 }
 
 // ────────────────────────────────────────────────────────────
@@ -155,7 +162,7 @@ void _registerRepositories() {
 
   // ─── Enrollment ──────────────────────────────────────────
   getIt.registerLazySingleton<EnrollmentRepository>(
-    () => EnrollmentRepositorySupabase(getIt()),
+    () => EnrollmentRepositorySupabase(getIt(), getIt()),
   );
 
   // ─── Courses → GitHub ───────────────────────────────────
@@ -170,7 +177,7 @@ void _registerRepositories() {
 
   // ─── Progress ────────────────────────────────────────────
   getIt.registerLazySingleton<ProgressRepository>(
-    () => ProgressRepositorySupabase(getIt()),
+    () => ProgressRepositorySupabase(getIt(), getIt()),
   );
 
   // ─── Roadmap ─────────────────────────────────────────────
@@ -221,6 +228,15 @@ void _registerDomainServices() {
       userRepository: getIt(),
     ),
   );
+
+  debugPrint('[DI] Registering ProgressService');
+  getIt.registerLazySingleton<ProgressService>(
+    () => ProgressService(
+      userRepository: getIt(),
+      progressRepository: getIt(),
+      streakService: getIt(),
+    ),
+  );
 }
 
 // ────────────────────────────────────────────────────────────
@@ -259,7 +275,7 @@ void _registerPresenters() {
     () => LessonPresenter(
       courseRepo: getIt(),
       userId: _currentUserId(),
-      progressRepo: getIt(),
+      progressService: getIt(),
     ),
   );
 

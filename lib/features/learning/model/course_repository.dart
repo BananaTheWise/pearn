@@ -26,5 +26,5 @@ abstract class CourseRepository {
   Future<List<Exercise>> getExercises(String courseId, String lessonId);
 
   /// Returns the exam for the specified [courseId], or `null` if none exists.
-  Future<Exam?> getExam(String courseId);
+  Future<Exam?> getExam(String courseId, String examId);
 }

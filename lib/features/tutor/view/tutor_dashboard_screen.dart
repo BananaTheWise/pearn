@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/di.dart';
 import '../../tutor/model/student_stat.dart';
+import '../../tutor/model/student_summary.dart';
 import '../../tutor/presenter/tutor_analytics_presenter.dart';
 import '../../tutor/view/i_tutor_dashboard_view.dart';
 
@@ -29,7 +30,7 @@ class _TutorDashboardScreenState extends State<TutorDashboardScreen>
   // ---------------------------------------------------------------------------
   bool _isLoading = true;
   Map<String, dynamic> _dashboardData = {};
-  List<String> _studentIds = [];
+  List<StudentSummary> _students = [];
   StudentStat? _selectedStudentStat;
   String? _errorMessage;
 
@@ -64,9 +65,9 @@ class _TutorDashboardScreenState extends State<TutorDashboardScreen>
   }
 
   @override
-  void showStudents(List<String> studentIds) {
+  void showStudents(List<StudentSummary> students) {
     setState(() {
-      _studentIds = studentIds;
+      _students = students;
     });
   }
 
@@ -103,7 +104,7 @@ class _TutorDashboardScreenState extends State<TutorDashboardScreen>
     _presenter.openCourseEditor(null); // new course
   }
 
-  void _onStudentTap(String studentId) {
+  void _onStudentTap(StudentSummary student) {
     // For simplicity, we fetch stats for the first course from the dashboard;
     // in reality we'd select a course. We'll rely on the presenter to decide.
     // We'll just ask presenter to load stats for a default course.
@@ -189,19 +190,19 @@ class _TutorDashboardScreenState extends State<TutorDashboardScreen>
               // Student list section
               Text('Students', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              if (_studentIds.isEmpty)
+              if (_students.isEmpty)
                 const Text('No students enrolled yet.')
               else
                 ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _studentIds.length,
+                  itemCount: _students.length,
                   itemBuilder: (context, index) {
-                    final id = _studentIds[index];
+                    final student = _students[index];
                     return ListTile(
-                      title: Text(id), // would normally show name
+                      title: Text(student.username),
                       leading: const Icon(Icons.person),
-                      onTap: () => _onStudentTap(id),
+                      onTap: () => _onStudentTap(student),
                     );
                   },
                 ),

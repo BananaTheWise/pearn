@@ -33,8 +33,9 @@ class NoteRepositorySupabase implements NoteRepository {
         throw Exception('Cannot save a note that belongs to another user.');
       }
 
-      // Upsert: if id is provided (non-empty) it will update, otherwise insert.
-      // We rely on Supabase to handle the upsert based on primary key.
+      // Note.toMap() already omits 'id' for a new (unsaved) note, so this
+      // inserts and lets Postgres generate the UUID; when 'id' is present
+      // it updates the matching row instead.
       final response = await _supabaseService.client
           .from('notes')
           .upsert(data)
@@ -89,12 +90,17 @@ class NoteRepositorySupabase implements NoteRepository {
     debugPrint('[DB][NOTE] Lesson note query started');
 
     try {
+      // There are no course_id/lesson_id columns — lesson-scoped notes
+      // are stored as attached_to_type='lesson' with attached_to_id
+      // encoding '<courseId>:<lessonId>' (see Note.toMap).
+      final attachedToId = '$courseId:$lessonId';
+
       final response = await _supabaseService.client
           .from('notes')
           .select()
           .eq('user_id', userId)
-          .eq('course_id', courseId)
-          .eq('lesson_id', lessonId)
+          .eq('attached_to_type', 'lesson')
+          .eq('attached_to_id', attachedToId)
           .order('updated_at', ascending: false);
 
       final notes = (response as List<dynamic>)
@@ -119,7 +125,7 @@ class NoteRepositorySupabase implements NoteRepository {
 
     try {
       // Delete only if the note belongs to the current user.
-      final response = await _supabaseService.client
+      await _supabaseService.client
           .from('notes')
           .delete()
           .eq('id', id)

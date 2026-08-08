@@ -119,7 +119,7 @@ class ReactionRepositorySupabase implements ReactionRepository {
     try {
       final response = await _supabaseService.client
           .from('reactions')
-          .select('id')
+          .select('user_id')
           .eq('target_type', 'course')
           .eq('target_id', courseId)
           .eq('type', reactionType)

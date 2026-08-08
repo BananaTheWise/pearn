@@ -27,6 +27,7 @@ class _ProgressScreenState extends State<ProgressScreen> implements IProgressVie
 
   int _streak = 0;
   int _level = 0;
+  int _totalXp = 0;
   List<Progress> _courseProgresses = [];
 
   @override
@@ -52,8 +53,17 @@ class _ProgressScreenState extends State<ProgressScreen> implements IProgressVie
 
   @override
   void showProgress(Progress progress) {
-    // This can be used to update a single course progress if needed,
-    // but we'll use the dedicated list method instead.
+    // Presenter calls this once per enrolled course while loading.
+    // Add it to the list (or replace if it's already there).
+    setState(() {
+      final index =
+          _courseProgresses.indexWhere((p) => p.courseId == progress.courseId);
+      if (index != -1) {
+        _courseProgresses[index] = progress;
+      } else {
+        _courseProgresses.add(progress);
+      }
+    });
   }
 
   @override
@@ -88,6 +98,13 @@ class _ProgressScreenState extends State<ProgressScreen> implements IProgressVie
   void showLevel(int level) {
     setState(() {
       _level = level;
+    });
+  }
+
+  @override
+  void showXp(int xp) {
+    setState(() {
+      _totalXp = xp;
     });
   }
 
@@ -169,7 +186,7 @@ class _ProgressScreenState extends State<ProgressScreen> implements IProgressVie
                 children: [
                   _buildStatItem('Streak', '$_streak days', Icons.local_fire_department),
                   _buildStatItem('Level', '$_level', Icons.stars),
-                  _buildStatItem('Total XP', '${_calculateTotalXp()}', Icons.emoji_events),
+                  _buildStatItem('Total XP', '$_totalXp', Icons.emoji_events),
                 ],
               )
             : Column(
@@ -178,7 +195,7 @@ class _ProgressScreenState extends State<ProgressScreen> implements IProgressVie
                   const SizedBox(height: 12),
                   _buildStatItem('Level', '$_level', Icons.stars),
                   const SizedBox(height: 12),
-                  _buildStatItem('Total XP', '${_calculateTotalXp()}', Icons.emoji_events),
+                  _buildStatItem('Total XP', '$_totalXp', Icons.emoji_events),
                 ],
               ),
       ),
@@ -222,14 +239,4 @@ class _ProgressScreenState extends State<ProgressScreen> implements IProgressVie
     );
   }
 
-  int _calculateTotalXp() {
-    // XP is not directly in the progress object; it's in the user profile.
-    // The presenter would likely pass that info via another method or we could
-    // store it separately. For simplicity, we'll just show 0 here and assume
-    // the presenter will call showLevel and showStreak, and maybe a separate
-    // showXp method if needed. We'll add a placeholder.
-    // Since the spec only mentions showStreak and showLevel, XP can be derived
-    // from level? But level is calculated from XP. We'll just show level.
-    return 0;
-  }
 }

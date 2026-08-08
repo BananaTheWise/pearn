@@ -23,10 +23,10 @@ class CourseDetailPresenter {
     required String userId,
     EnrollmentRepository? enrollmentRepo,
     ReactionRepository? reactionRepo,
-  })  : _courseRepository = courseRepo,
-        _userId = userId,
-        _enrollmentRepository = enrollmentRepo,
-        _reactionRepository = reactionRepo;
+  }) : _courseRepository = courseRepo,
+       _userId = userId,
+       _enrollmentRepository = enrollmentRepo,
+       _reactionRepository = reactionRepo;
 
   // ---------------------------------------------------------------------------
   // View
@@ -52,8 +52,7 @@ class CourseDetailPresenter {
         return;
       }
 
-      final chapters =
-          await _courseRepository.getChapters(courseId);
+      final chapters = await _courseRepository.getChapters(courseId);
 
       _view?.showCourse(course);
       _view?.showChapters(chapters);
@@ -61,17 +60,11 @@ class CourseDetailPresenter {
       await _loadEnrollment();
       await _loadReactionState();
 
-      debugPrint(
-        '[PRESENTER][COURSE] Course details loaded: $courseId',
-      );
+      debugPrint('[PRESENTER][COURSE] Course details loaded: $courseId');
     } catch (e) {
-      debugPrint(
-        '[PRESENTER][COURSE] Failed to load course details: $e',
-      );
+      debugPrint('[PRESENTER][COURSE] Failed to load course details: $e');
 
-      _view?.showError(
-        'Unable to load course. Please try again.',
-      );
+      _view?.showError('Unable to load course. Please try again.');
     } finally {
       _view?.showLoading(false);
     }
@@ -113,13 +106,10 @@ class CourseDetailPresenter {
       return;
     }
 
-    debugPrint(
-      '[PRESENTER][REACTION] Course reaction requested',
-    );
+    debugPrint('[PRESENTER][REACTION] Course reaction requested');
 
     try {
       final reaction = Reaction(
-        id: '',
         userId: _userId,
         targetType: 'course',
         targetId: courseId,
@@ -131,17 +121,11 @@ class CourseDetailPresenter {
 
       await _loadReactionState();
 
-      debugPrint(
-        '[PRESENTER][REACTION] Course reaction completed',
-      );
+      debugPrint('[PRESENTER][REACTION] Course reaction completed');
     } catch (e) {
-      debugPrint(
-        '[PRESENTER][REACTION] Reaction failed: $e',
-      );
+      debugPrint('[PRESENTER][REACTION] Reaction failed: $e');
 
-      _view?.showError(
-        'Could not save reaction. Please try again.',
-      );
+      _view?.showError('Could not save reaction. Please try again.');
     }
   }
 
@@ -162,21 +146,14 @@ class CourseDetailPresenter {
       return;
     }
 
-    debugPrint(
-      '[PRESENTER][REACTION] Removing course reaction',
-    );
+    debugPrint('[PRESENTER][REACTION] Removing course reaction');
 
     try {
-      await repository.deleteCourseReaction(
-        _userId,
-        courseId,
-      );
+      await repository.deleteCourseReaction(_userId, courseId);
 
       await _loadReactionState();
     } catch (e) {
-      debugPrint(
-        '[PRESENTER][REACTION] Failed to remove reaction: $e',
-      );
+      debugPrint('[PRESENTER][REACTION] Failed to remove reaction: $e');
     }
   }
 
@@ -194,27 +171,18 @@ class CourseDetailPresenter {
     final repository = _enrollmentRepository;
 
     if (repository == null) {
-      _view?.showError(
-        'Enrollment is not available.',
-      );
+      _view?.showError('Enrollment is not available.');
       return;
     }
 
     try {
-      await repository.enroll(
-        _userId,
-        courseId,
-      );
+      await repository.enroll(_userId, courseId);
 
       await _loadEnrollment();
     } catch (e) {
-      debugPrint(
-        '[PRESENTER][ENROLL] Enrollment failed: $e',
-      );
+      debugPrint('[PRESENTER][ENROLL] Enrollment failed: $e');
 
-      _view?.showError(
-        'Could not enroll. Please try again.',
-      );
+      _view?.showError('Could not enroll. Please try again.');
     }
   }
 
@@ -232,16 +200,11 @@ class CourseDetailPresenter {
     }
 
     try {
-      final enrollment = await repository.getEnrollment(
-        _userId,
-        courseId,
-      );
+      final enrollment = await repository.getEnrollment(_userId, courseId);
 
       _view?.showEnrollmentState(enrollment);
     } catch (e) {
-      debugPrint(
-        '[PRESENTER][ENROLLMENT] Failed to load enrollment: $e',
-      );
+      debugPrint('[PRESENTER][ENROLLMENT] Failed to load enrollment: $e');
 
       _view?.showEnrollmentState(null);
     }
@@ -262,8 +225,7 @@ class CourseDetailPresenter {
 
     try {
       // Current user's reaction.
-      final userReaction =
-          await repository.getUserCourseReaction(
+      final userReaction = await repository.getUserCourseReaction(
         _userId,
         courseId,
       );
@@ -272,14 +234,7 @@ class CourseDetailPresenter {
       //
       // Your repository requires a reaction type to count.
       // Therefore we calculate the total from the supported emojis.
-      const reactionTypes = [
-        '👍',
-        '❤️',
-        '😂',
-        '😮',
-        '😢',
-        '😡',
-      ];
+      const reactionTypes = ['👍', '❤️', '😂', '😮', '😢', '😡'];
 
       int total = 0;
 
@@ -290,14 +245,9 @@ class CourseDetailPresenter {
         );
       }
 
-      _view?.showReactionState(
-        userReaction?.type,
-        total,
-      );
+      _view?.showReactionState(userReaction?.type, total);
     } catch (e) {
-      debugPrint(
-        '[PRESENTER][REACTION] Failed to load reaction state: $e',
-      );
+      debugPrint('[PRESENTER][REACTION] Failed to load reaction state: $e');
 
       _view?.showReactionState(null, 0);
     }
@@ -336,10 +286,7 @@ class CourseReactionBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 8,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
             if (totalReactions != null) ...[
@@ -353,65 +300,43 @@ class CourseReactionBar extends StatelessWidget {
               const SizedBox(width: 8),
             ],
 
-            ...reactionTypes.map(
-              (emoji) {
-                final isSelected =
-                    userReaction == emoji;
+            ...reactionTypes.map((emoji) {
+              final isSelected = userReaction == emoji;
 
-                final count =
-                    reactionCounts?[emoji] ?? 0;
+              final count = reactionCounts?[emoji] ?? 0;
 
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                  ),
-                  child: InkWell(
-                    borderRadius:
-                        BorderRadius.circular(20),
-                    onTap: () =>
-                        onReactionSelected(emoji),
-                    child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: isSelected
-                          ? BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withValues(alpha: 0.15),
-                              borderRadius:
-                                  BorderRadius.circular(20),
-                            )
-                          : null,
-                      child: Row(
-                        mainAxisSize:
-                            MainAxisSize.min,
-                        children: [
-                          Text(
-                            emoji,
-                            style: const TextStyle(
-                              fontSize: 22,
-                            ),
-                          ),
-                          if (reactionCounts != null) ...[
-                            const SizedBox(width: 4),
-                            Text(
-                              '$count',
-                              style: const TextStyle(
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () => onReactionSelected(emoji),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: isSelected
+                        ? BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(20),
+                          )
+                        : null,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(emoji, style: const TextStyle(fontSize: 22)),
+                        if (reactionCounts != null) ...[
+                          const SizedBox(width: 4),
+                          Text('$count', style: const TextStyle(fontSize: 14)),
                         ],
-                      ),
+                      ],
                     ),
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            }),
           ],
         ),
       ),

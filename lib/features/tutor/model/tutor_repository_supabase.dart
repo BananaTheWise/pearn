@@ -6,6 +6,7 @@ import '../../../core/services/github_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../auth/model/user_repository.dart';
 import '../model/student_stat.dart';
+import '../model/student_summary.dart';
 import '../model/tutor_repository.dart';
 
 /// Concrete implementation of [TutorRepository] using Supabase and GitHub.
@@ -27,7 +28,9 @@ class TutorRepositorySupabase implements TutorRepository {
   // ---------------------------------------------------------------------------
   Future<void> _ensureTutorRole(String tutorId) async {
     final user = await _userRepository.findById(tutorId);
-    if (user == null || user.role != 'tutor') {
+    // Admins can access tutor tooling too — see app_shell.dart, which shows
+    // the "Teaching" tab for both roleTutor and roleAdmin.
+    if (user == null || (user.role != 'tutor' && user.role != 'admin')) {
       throw Exception('Access denied: only tutors can perform this action.');
     }
   }
@@ -83,7 +86,7 @@ class TutorRepositorySupabase implements TutorRepository {
   // getStudentsForTutor
   // ---------------------------------------------------------------------------
   @override
-  Future<List<String>> getStudentsForTutor(String tutorId) async {
+  Future<List<StudentSummary>> getStudentsForTutor(String tutorId) async {
     await _ensureTutorRole(tutorId);
     debugPrint('[REPOSITORY][TUTOR] Loading students');
     debugPrint('[DB][TUTOR] Student query started');
@@ -105,9 +108,24 @@ class TutorRepositorySupabase implements TutorRepository {
           .toSet()
           .toList();
 
+      if (userIds.isEmpty) {
+        debugPrint('[DB][TUTOR] Student query completed');
+        return [];
+      }
+
+      // Resolve usernames in one batched query rather than N+1 lookups.
+      final profilesResponse = await _supabaseService.client
+          .from('profiles')
+          .select('id, username')
+          .inFilter('id', userIds);
+
+      final students = (profilesResponse as List<dynamic>)
+          .map((e) => StudentSummary.fromMap(e as Map<String, dynamic>))
+          .toList();
+
       debugPrint('[DB][TUTOR] Student query completed');
-      debugPrint('[REPOSITORY][TUTOR] Students loaded: ${userIds.length}');
-      return userIds;
+      debugPrint('[REPOSITORY][TUTOR] Students loaded: ${students.length}');
+      return students;
     } catch (e) {
       debugPrint('[ERROR][REPOSITORY][TUTOR] Failed to load students');
       debugPrint('Reason: $e');
@@ -120,7 +138,7 @@ class TutorRepositorySupabase implements TutorRepository {
   // ---------------------------------------------------------------------------
   @override
   Future<StudentStat?> getStudentStat(
-      String tutorId, String studentId, String courseId) async {
+      String tutorId, String studentId, int courseId) async {
     await _ensureTutorRole(tutorId);
     debugPrint('[REPOSITORY][TUTOR] Loading student statistics');
     debugPrint('[DB][TUTOR] Statistics query started');
@@ -133,17 +151,18 @@ class TutorRepositorySupabase implements TutorRepository {
         throw Exception('You do not manage this course.');
       }
 
-      // Fetch progress
-      final progressResponse = await _supabaseService.client
-          .from('progress')
+      // Fetch enrollment/progress (there is no separate 'progress' table —
+      // completion data lives on 'enrollments').
+      final enrollmentResponse = await _supabaseService.client
+          .from('enrollments')
           .select()
           .eq('user_id', studentId)
           .eq('course_id', courseId)
           .maybeSingle();
 
-      final completedLessons = (progressResponse != null &&
-              progressResponse['completed_lesson_ids'] != null)
-          ? (progressResponse['completed_lesson_ids'] as List<dynamic>).length
+      final completedLessons = (enrollmentResponse != null &&
+              enrollmentResponse['completed_lessons'] != null)
+          ? (enrollmentResponse['completed_lessons'] as List<dynamic>).length
           : 0;
 
       // Fetch user profile for XP/level
@@ -156,7 +175,7 @@ class TutorRepositorySupabase implements TutorRepository {
           .from('exam_attempts')
           .select()
           .eq('user_id', studentId)
-          .eq('exam_id', courseId)  // Assuming exam_id matches course_id
+          .eq('course_id', courseId)
           .order('attempted_at', ascending: false);
 
       final attempts = examAttemptsResponse as List<dynamic>;
@@ -171,9 +190,9 @@ class TutorRepositorySupabase implements TutorRepository {
         avgScore = totalScore / attemptCount;
       }
 
-      // Last active date from progress or user
-      final lastActiveDate = progressResponse?['last_accessed'] != null
-          ? DateTime.tryParse(progressResponse?['last_accessed'] as String)
+      // Last active date from enrollment or user profile
+      final lastActiveDate = enrollmentResponse?['last_accessed_at'] != null
+          ? DateTime.tryParse(enrollmentResponse!['last_accessed_at'] as String)
           : userProfile?.lastActiveDate;
 
       final stat = StudentStat(
@@ -257,19 +276,17 @@ class TutorRepositorySupabase implements TutorRepository {
   // getManagedCourseIds
   // ---------------------------------------------------------------------------
   @override
-  Future<List<String>> getManagedCourseIds(String tutorId) async {
-    // Assuming there is a courses table with a `tutor_id` column.
-    // If the architecture does not have this, we need to define it, but we are told not to invent.
-    // We'll attempt to query a hypothetical table, but we can also fall back to a static list or check metadata.
-    // For now, we'll use a Supabase query that expects a 'courses' table with 'tutor_id'.
+  Future<List<int>> getManagedCourseIds(String tutorId) async {
+    // Requires migration 0001_add_tutor_id_to_courses.sql (adds
+    // courses.tutor_id). The courses PK is `course_id`, not `id`.
     try {
       final response = await _supabaseService.client
           .from('courses')
-          .select('id')
+          .select('course_id')
           .eq('tutor_id', tutorId);
 
       return (response as List<dynamic>)
-          .map((e) => e['id'] as String)
+          .map((e) => (e['course_id'] as num).toInt())
           .toList();
     } catch (e) {
       // If the table doesn't exist, this will fail. In a real app, we'd handle gracefully.

@@ -1,13 +1,15 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/services/supabase_service.dart';
+import '../../../core/services/course_id_resolver.dart';
 import 'enrollment.dart';
 import 'enrollment_repository.dart';
 
 class EnrollmentRepositorySupabase implements EnrollmentRepository {
   final SupabaseService _supabaseService;
+  final CourseIdResolver _courseIdResolver;
 
-  EnrollmentRepositorySupabase(this._supabaseService);
+  EnrollmentRepositorySupabase(this._supabaseService, this._courseIdResolver);
 
   // ---------------------------------------------------------------------------
   // Get enrollment for a specific course
@@ -22,11 +24,13 @@ class EnrollmentRepositorySupabase implements EnrollmentRepository {
       '[ENROLLMENT] Loading enrollment for course: $courseId',
     );
 
+    final courseIdInt = await _courseIdResolver.idForSlug(courseId);
+
     final response = await _supabaseService.client
         .from('enrollments')
         .select()
         .eq('user_id', userId)
-        .eq('course_id', courseId)
+        .eq('course_id', courseIdInt)
         .maybeSingle();
 
     if (response == null) {
@@ -35,6 +39,7 @@ class EnrollmentRepositorySupabase implements EnrollmentRepository {
 
     return Enrollment.fromMap(
       Map<String, dynamic>.from(response),
+      courseSlug: courseId,
     );
   }
 
@@ -56,13 +61,13 @@ class EnrollmentRepositorySupabase implements EnrollmentRepository {
         .eq('user_id', userId)
         .order('enrolled_at', ascending: false);
 
-    return response
-        .map<Enrollment>(
-          (row) => Enrollment.fromMap(
-            Map<String, dynamic>.from(row),
-          ),
-        )
-        .toList();
+    final enrollments = <Enrollment>[];
+    for (final row in response) {
+      final map = Map<String, dynamic>.from(row);
+      final slug = await _courseIdResolver.slugForId(map['course_id'] as int);
+      enrollments.add(Enrollment.fromMap(map, courseSlug: slug));
+    }
+    return enrollments;
   }
 
   // ---------------------------------------------------------------------------
@@ -78,14 +83,15 @@ class EnrollmentRepositorySupabase implements EnrollmentRepository {
       '[ENROLLMENT] Enrolling user in course: $courseId',
     );
 
-    await _supabaseService.client
-        .from('enrollments')
-        .insert({
+    final courseIdInt = await _courseIdResolver.idForSlug(courseId);
+
+    await _supabaseService.client.from('enrollments').insert({
       'user_id': userId,
-      'course_id': courseId,
-      'status': 'active',
+      'course_id': courseIdInt,
       'enrolled_at': DateTime.now().toIso8601String(),
       'completed_at': null,
+      'completed_lessons': <String>[],
+      'completion_percent': 0,
     });
   }
 }

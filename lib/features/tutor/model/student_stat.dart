@@ -15,8 +15,8 @@ class StudentStat {
   /// ID of the student (user).
   final String userId;
 
-  /// ID of the course.
-  final String courseId;
+  /// ID of the course (matches courses.course_id, an integer identity column).
+  final int courseId;
 
   /// Number of lessons completed by the student in this course.
   final int completedLessonsCount;
@@ -83,7 +83,7 @@ class StudentStat {
     return StudentStat(
       id: id as String,
       userId: userId as String,
-      courseId: courseId as String,
+      courseId: (courseId as num).toInt(),
       completedLessonsCount: (completed as num).toInt(),
       totalXp: (totalXp as num).toInt(),
       currentLevel: (currentLevel as num).toInt(),

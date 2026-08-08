@@ -24,14 +24,17 @@ class CourseRepositoryGithub implements CourseRepository {
 
     try {
       final folders = await _githubService.listCourseFolders();
-      debugPrint('[REPOSITORY][COURSE] Course folders received: ${folders.length}');
+      debugPrint(
+        '[REPOSITORY][COURSE] Course folders received: ${folders.length}',
+      );
 
       final courses = <Course>[];
       for (final folder in folders) {
         try {
           debugPrint('[GITHUB] Fetching course metadata');
-          final courseJson =
-              await _githubService.fetchJson('courses/$folder/course.json');
+          final courseJson = await _githubService.fetchJson(
+            'courses/$folder/course.json',
+          );
           courses.add(Course.fromMap(courseJson));
         } catch (e) {
           debugPrint('[ERROR][COURSE] Failed to load course $folder: $e');
@@ -56,8 +59,9 @@ class CourseRepositoryGithub implements CourseRepository {
 
     try {
       debugPrint('[GITHUB] Fetching course metadata');
-      final courseJson =
-          await _githubService.fetchJson('courses/$courseId/course.json');
+      final courseJson = await _githubService.fetchJson(
+        'courses/$courseId/course.json',
+      );
       final course = Course.fromMap(courseJson);
       debugPrint('[REPOSITORY][COURSE] Course loaded');
       return course;
@@ -76,10 +80,13 @@ class CourseRepositoryGithub implements CourseRepository {
 
     try {
       // The chapters are defined inside course.json
-      final courseJson =
-          await _githubService.fetchJson('courses/$courseId/course.json');
+      final courseJson = await _githubService.fetchJson(
+        'courses/$courseId/course.json',
+      );
       final course = Course.fromMap(courseJson);
-      debugPrint('[REPOSITORY][COURSE] Chapters loaded: ${course.chapters.length}');
+      debugPrint(
+        '[REPOSITORY][COURSE] Chapters loaded: ${course.chapters.length}',
+      );
       return course.chapters;
     } catch (e) {
       debugPrint('[ERROR][COURSE] Failed to load chapters for $courseId: $e');
@@ -102,9 +109,9 @@ class CourseRepositoryGithub implements CourseRepository {
 
       for (final chapter in chapters) {
         lessonInfo = chapter.lessons.cast<ChapterLesson?>().firstWhere(
-              (l) => l!.id == lessonId,
-              orElse: () => null,
-            );
+          (l) => l!.id == lessonId,
+          orElse: () => null,
+        );
         if (lessonInfo != null) {
           parentChapter = chapter;
           break;
@@ -133,7 +140,9 @@ class CourseRepositoryGithub implements CourseRepository {
       debugPrint('[REPOSITORY][LESSON] Lesson loaded');
       return lesson;
     } catch (e) {
-      debugPrint('[ERROR][LESSON] Failed to load lesson $lessonId in $courseId: $e');
+      debugPrint(
+        '[ERROR][LESSON] Failed to load lesson $lessonId in $courseId: $e',
+      );
       return null;
     }
   }
@@ -143,44 +152,105 @@ class CourseRepositoryGithub implements CourseRepository {
   // ---------------------------------------------------------------------------
   @override
   Future<List<Exercise>> getExercises(String courseId, String lessonId) async {
-    debugPrint('[REPOSITORY][EXERCISES] Loading exercises for lesson $lessonId in $courseId');
+    debugPrint(
+      '[REPOSITORY][EXERCISES] '
+      'Loading exercises for lesson "$lessonId" in "$courseId"',
+    );
 
     try {
-      // Determine the chapter that owns this lesson.
+      // Find the chapter containing this lesson.
       final chapters = await getChapters(courseId);
+
       Chapter? parentChapter;
 
       for (final chapter in chapters) {
-        if (chapter.lessons.any((l) => l.id == lessonId)) {
+        final containsLesson = chapter.lessons.any(
+          (lesson) => lesson.id == lessonId,
+        );
+
+        if (containsLesson) {
           parentChapter = chapter;
           break;
         }
       }
 
       if (parentChapter == null) {
-        debugPrint('[REPOSITORY][EXERCISES] No chapter found for lesson');
+        debugPrint(
+          '[REPOSITORY][EXERCISES] '
+          'Lesson "$lessonId" was not found in course structure.',
+        );
+
         return [];
       }
 
-      // Load the exercises.json file from the chapter folder.
+      debugPrint(
+        '[REPOSITORY][EXERCISES] '
+        'Lesson "$lessonId" belongs to chapter "${parentChapter.id}"',
+      );
+
+      // Chapter-level exercises file.
       final path = 'courses/$courseId/${parentChapter.id}/exercises.json';
+
+      debugPrint('[GITHUB][EXERCISES] Fetching $path');
+
       final json = await _githubService.fetchJson(path);
 
-      // The JSON is expected to be a map with an "exercises" key containing a list.
       final exercisesData = json['exercises'];
+
       if (exercisesData is! List) {
-        debugPrint('[REPOSITORY][EXERCISES] Unexpected exercises format');
+        debugPrint(
+          '[REPOSITORY][EXERCISES] '
+          'Invalid exercises format.',
+        );
+
         return [];
       }
 
-      final exercises = exercisesData
-          .map((e) => Exercise.fromMap(e as Map<String, dynamic>))
-          .toList();
+      final exercises = <Exercise>[];
 
-      debugPrint('[REPOSITORY][EXERCISES] Exercises loaded: ${exercises.length}');
+      for (final raw in exercisesData) {
+        if (raw is! Map<String, dynamic>) {
+          continue;
+        }
+
+        final exerciseLessonId = raw['lesson_id']?.toString();
+
+        // IMPORTANT:
+        // Only return exercises belonging to the requested lesson.
+        if (exerciseLessonId != lessonId) {
+          continue;
+        }
+
+        try {
+          exercises.add(Exercise.fromMap(raw));
+        } catch (e) {
+          debugPrint(
+            '[ERROR][EXERCISES] '
+            'Failed to parse exercise: $e',
+          );
+        }
+      }
+
+      // Keep exercises in their defined order.
+      exercises.sort((a, b) => a.order!.compareTo(b.order as num));
+
+      debugPrint(
+        '[REPOSITORY][EXERCISES] '
+        'Exercises loaded for "$lessonId": ${exercises.length}',
+      );
+
+      debugPrint(
+        '[REPOSITORY][EXERCISES] '
+        'IDs: ${exercises.map((e) => e.id).toList()}',
+      );
+
       return exercises;
     } catch (e) {
-      debugPrint('[ERROR][EXERCISES] Failed to load exercises: $e');
+      debugPrint(
+        '[ERROR][EXERCISES] '
+        'Failed to load exercises for lesson "$lessonId": $e',
+      );
+
       return [];
     }
   }
@@ -188,18 +258,33 @@ class CourseRepositoryGithub implements CourseRepository {
   // ---------------------------------------------------------------------------
   // getExam
   // ---------------------------------------------------------------------------
+  //
+  // A course can now have more than one exam: a "final" exam at the course
+  // root (courses/{courseId}/exam.json) and a chapter exam per chapter
+  // (courses/{courseId}/{chapterId}/exam.json). examId is either "final"
+  // or a chapter id (matching a folder name under the course).
   @override
-  Future<Exam?> getExam(String courseId) async {
-    debugPrint('[REPOSITORY][EXAM] Loading exam for $courseId');
+  Future<Exam?> getExam(String courseId, String examId) async {
+    debugPrint(
+      '[REPOSITORY][EXAM] Loading exam "$examId" for course $courseId',
+    );
 
     try {
-      final path = 'courses/$courseId/exam.json';
+      final path = examId == 'final'
+          ? 'courses/$courseId/exam.json'
+          : 'courses/$courseId/$examId/exam.json';
+
+      debugPrint('[GITHUB][EXAM] Fetching $path');
+
       final json = await _githubService.fetchJson(path);
       final exam = Exam.fromMap(json);
+
       debugPrint('[REPOSITORY][EXAM] Exam loaded');
       return exam;
     } catch (e) {
-      debugPrint('[ERROR][EXAM] Failed to load exam for $courseId: $e');
+      debugPrint(
+        '[ERROR][EXAM] Failed to load exam "$examId" for $courseId: $e',
+      );
       return null;
     }
   }

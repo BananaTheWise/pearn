@@ -11,18 +11,26 @@ class ExerciseScreen extends StatefulWidget {
   final String lessonId;
   final String exerciseId;
 
+  /// When provided, exercises from ALL of these lesson IDs are loaded and
+  /// flattened into one continuous set (chapter-level exercises), rather
+  /// than only the exercises belonging to [lessonId]. Pass
+  /// [exerciseId] as an empty string to start from the first exercise.
+  final List<String>? chapterLessonIds;
+
   const ExerciseScreen({
     super.key,
     required this.courseId,
     required this.lessonId,
     required this.exerciseId,
+    this.chapterLessonIds,
   });
 
   @override
   State<ExerciseScreen> createState() => _ExerciseScreenState();
 }
 
-class _ExerciseScreenState extends State<ExerciseScreen> implements IExerciseView {
+class _ExerciseScreenState extends State<ExerciseScreen>
+    implements IExerciseView {
   // ---------------------------------------------------------------------------
   // Dependencies
   // ---------------------------------------------------------------------------
@@ -48,7 +56,21 @@ class _ExerciseScreenState extends State<ExerciseScreen> implements IExerciseVie
     debugPrint('[UI][EXERCISE] Exercise opened');
     _presenter = getIt<ExercisePresenter>();
     _presenter.view = this;
-    _presenter.loadExercise(widget.courseId, widget.lessonId, widget.exerciseId);
+
+    final chapterLessonIds = widget.chapterLessonIds;
+    if (chapterLessonIds != null && chapterLessonIds.isNotEmpty) {
+      _presenter.loadChapterExercises(
+        widget.courseId,
+        chapterLessonIds,
+        startExerciseId: widget.exerciseId.isEmpty ? null : widget.exerciseId,
+      );
+    } else {
+      _presenter.loadExercise(
+        widget.courseId,
+        widget.lessonId,
+        widget.exerciseId,
+      );
+    }
   }
 
   @override
@@ -98,20 +120,15 @@ class _ExerciseScreenState extends State<ExerciseScreen> implements IExerciseVie
   }
 
   @override
-  void navigateToNextExercise() {
-    // Presenter will provide the next exercise ID and navigate.
-    // For simplicity, we'll pop back to the previous screen.
-    Navigator.pop(context);
-  }
-
-  @override
   void showCompletion() {
     setState(() {
       _isCompleted = true;
+      _answerCorrect = null;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('All exercises completed!')),
-    );
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('All exercises completed!')));
   }
 
   // ---------------------------------------------------------------------------
@@ -138,19 +155,44 @@ class _ExerciseScreenState extends State<ExerciseScreen> implements IExerciseVie
   // ---------------------------------------------------------------------------
   // Build
   // ---------------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
+    if (_isCompleted) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Exercises Complete')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle_outline, size: 80),
+              const SizedBox(height: 20),
+              const Text(
+                'All exercises completed!',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('Back'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_exercise?.question ?? 'Exercise'),
-      ),
+      appBar: AppBar(title: Text(_exercise?.question ?? 'Exercise')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? _buildErrorView()
-              : _exercise == null
-                  ? const Center(child: Text('Exercise not found'))
-                  : _buildContent(),
+          ? _buildErrorView()
+          : _exercise == null
+          ? const Center(child: Text('Exercise not found'))
+          : _buildContent(),
       floatingActionButton: _exercise != null && _answerCorrect != null
           ? FloatingActionButton.extended(
               onPressed: _onNextPressed,
@@ -169,8 +211,24 @@ class _ExerciseScreenState extends State<ExerciseScreen> implements IExerciseVie
           Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () => _presenter.loadExercise(
-                widget.courseId, widget.lessonId, widget.exerciseId),
+            onPressed: () {
+              final chapterLessonIds = widget.chapterLessonIds;
+              if (chapterLessonIds != null && chapterLessonIds.isNotEmpty) {
+                _presenter.loadChapterExercises(
+                  widget.courseId,
+                  chapterLessonIds,
+                  startExerciseId: widget.exerciseId.isEmpty
+                      ? null
+                      : widget.exerciseId,
+                );
+              } else {
+                _presenter.loadExercise(
+                  widget.courseId,
+                  widget.lessonId,
+                  widget.exerciseId,
+                );
+              }
+            },
             child: const Text('Retry'),
           ),
         ],
@@ -199,11 +257,13 @@ class _ExerciseScreenState extends State<ExerciseScreen> implements IExerciseVie
                 title: Text(option),
                 value: option,
                 groupValue: _selectedOption,
-                onChanged: isDisabled ? null : (value) {
-                  setState(() {
-                    _selectedOption = value;
-                  });
-                },
+                onChanged: isDisabled
+                    ? null
+                    : (value) {
+                        setState(() {
+                          _selectedOption = value;
+                        });
+                      },
               ),
             )
           else

@@ -1,34 +1,45 @@
-/// Pure data model representing a reaction on a **course**.
+/// Pure data model representing a reaction on a course.
 ///
-/// **Critical:** This application supports reactions **only for courses**.
-/// Any attempt to create a [Reaction] with a [targetType] other than
-/// `'course'` will throw an [ArgumentError].
+/// Pearn currently supports reactions only for courses.
 ///
-/// This model contains no external dependencies and is immutable.
+/// A reaction is uniquely identified by the combination:
+///   user_id + target_type + target_id
+///
+/// This matches the Supabase primary key:
+///   PRIMARY KEY (user_id, target_type, target_id)
+///
+/// The model contains no database-specific ID because the database
+/// does not have a separate `id` column for reactions.
+///
+/// This model is immutable.
 class Reaction {
-  /// Unique identifier of the reaction.
-  ///
-  /// Can be null when creating a new reaction if the database generates
-  /// the ID automatically.
-  final String? id;
-
   /// ID of the user who reacted.
   final String userId;
 
-  /// The type of the target – must be `'course'`.
+  /// Type of the target.
+  ///
+  /// Pearn currently supports only:
+  ///   'course'
   final String targetType;
 
-  /// The ID of the target course.
+  /// ID of the target course.
+  ///
+  /// This corresponds to the Supabase `target_id` column.
   final String targetId;
 
-  /// The reaction emoji or code (e.g. 👍, ❤️).
+  /// Reaction type/code.
+  ///
+  /// Examples:
+  ///   'like'
+  ///   'love'
+  ///   'fire'
+  ///   'bookmark'
   final String type;
 
   /// Timestamp when the reaction was created.
   final DateTime createdAt;
 
   const Reaction._({
-    required this.id,
     required this.userId,
     required this.targetType,
     required this.targetId,
@@ -36,11 +47,12 @@ class Reaction {
     required this.createdAt,
   });
 
-  /// Creates a [Reaction] after ensuring [targetType] is exactly `'course'`.
+  /// Creates a [Reaction].
   ///
-  /// Throws [ArgumentError] if [targetType] is not `'course'`.
+  /// Only course reactions are currently supported.
+  ///
+  /// Throws [ArgumentError] when [targetType] is not `'course'`.
   factory Reaction({
-    String? id,
     required String userId,
     required String targetType,
     required String targetId,
@@ -55,7 +67,6 @@ class Reaction {
     }
 
     return Reaction._(
-      id: id,
       userId: userId,
       targetType: targetType,
       targetId: targetId,
@@ -68,10 +79,18 @@ class Reaction {
   // Serialization
   // ---------------------------------------------------------------------------
 
-  /// Creates a [Reaction] from a database map.
+  /// Creates a [Reaction] from a Supabase database row.
   ///
-  /// The map must contain a `target_type` field equal to `'course'`,
-  /// otherwise an [ArgumentError] is thrown.
+  /// Expected database columns:
+  ///
+  ///   user_id
+  ///   target_type
+  ///   target_id
+  ///   type
+  ///   created_at
+  ///
+  /// There is intentionally no `id` field because the Supabase
+  /// `reactions` table does not contain one.
   factory Reaction.fromMap(Map<String, dynamic> map) {
     final targetType = map['target_type'];
 
@@ -82,36 +101,61 @@ class Reaction {
       );
     }
 
+    final userId = map['user_id'];
+    final targetId = map['target_id'];
+    final type = map['type'];
+    final createdAt = map['created_at'];
+
+    if (userId == null) {
+      throw ArgumentError(
+        'Reaction map is missing required field: user_id',
+      );
+    }
+
+    if (targetId == null) {
+      throw ArgumentError(
+        'Reaction map is missing required field: target_id',
+      );
+    }
+
+    if (type == null) {
+      throw ArgumentError(
+        'Reaction map is missing required field: type',
+      );
+    }
+
+    if (createdAt == null) {
+      throw ArgumentError(
+        'Reaction map is missing required field: created_at',
+      );
+    }
+
     return Reaction(
-      id: map['id'] as String?,
-      userId: map['user_id'] as String,
+      userId: userId as String,
       targetType: targetType as String,
-      targetId: map['target_id'] as String,
-      type: map['type'] as String,
-      createdAt: DateTime.parse(
-        map['created_at'] as String,
-      ),
+      targetId: targetId as String,
+      type: type as String,
+      createdAt: DateTime.parse(createdAt as String),
     );
   }
 
-  /// Converts this [Reaction] to a map suitable for database operations.
+  /// Converts this [Reaction] into a map suitable for Supabase.
   ///
-  /// The `id` is omitted when null or empty, allowing Supabase/PostgreSQL
-  /// to generate it automatically.
+  /// Matches the exact database columns:
+  ///
+  ///   user_id
+  ///   target_type
+  ///   target_id
+  ///   type
+  ///   created_at
   Map<String, dynamic> toMap() {
-    final map = <String, dynamic>{
+    return {
       'user_id': userId,
       'target_type': targetType,
       'target_id': targetId,
       'type': type,
       'created_at': createdAt.toIso8601String(),
     };
-
-    if (id != null && id!.isNotEmpty) {
-      map['id'] = id;
-    }
-
-    return map;
   }
 
   // ---------------------------------------------------------------------------
@@ -119,33 +163,36 @@ class Reaction {
   // ---------------------------------------------------------------------------
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Reaction &&
-          runtimeType == other.runtimeType &&
-          id == other.id &&
-          userId == other.userId &&
-          targetType == other.targetType &&
-          targetId == other.targetId &&
-          type == other.type &&
-          createdAt == other.createdAt;
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is Reaction &&
+            runtimeType == other.runtimeType &&
+            userId == other.userId &&
+            targetType == other.targetType &&
+            targetId == other.targetId &&
+            type == other.type &&
+            createdAt == other.createdAt;
+  }
 
   @override
-  int get hashCode => Object.hash(
-        id,
-        userId,
-        targetType,
-        targetId,
-        type,
-        createdAt,
-      );
+  int get hashCode {
+    return Object.hash(
+      userId,
+      targetType,
+      targetId,
+      type,
+      createdAt,
+    );
+  }
 
   @override
-  String toString() =>
-      'Reaction('
-      'id: $id, '
-      'userId: $userId, '
-      'targetId: $targetId, '
-      'type: $type'
-      ')';
+  String toString() {
+    return 'Reaction('
+        'userId: $userId, '
+        'targetType: $targetType, '
+        'targetId: $targetId, '
+        'type: $type, '
+        'createdAt: $createdAt'
+        ')';
+  }
 }

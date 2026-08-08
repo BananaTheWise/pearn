@@ -70,6 +70,7 @@ class ProgressPresenter {
 
       if (user != null) {
         _view?.showLevel(user.currentLevel);
+        _view?.showXp(user.totalXp);
       }
 
       debugPrint('[PRESENTER][PROGRESS] Progress displayed');

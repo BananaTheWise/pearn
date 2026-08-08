@@ -67,7 +67,7 @@ class TutorAnalyticsPresenter {
   // ---------------------------------------------------------------------------
   // loadStudentStats
   // ---------------------------------------------------------------------------
-  Future<void> loadStudentStats(String studentId, String courseId) async {
+  Future<void> loadStudentStats(String studentId, int courseId) async {
     debugPrint('[PRESENTER][TUTOR] Loading student statistics');
     try {
       final stats = await _tutorRepository.getStudentStat(
