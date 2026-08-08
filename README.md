@@ -1200,7 +1200,6 @@ C++
 Java
 JavaScript
 TypeScript
-Dart
 SQL
 HTML / CSS
 ```
@@ -1241,25 +1240,6 @@ Possible choices include:
 * Apache 2.0
 * GPL-3.0
 
----
-
-# 👨‍💻 Author
-
-## Ahmed Badr
-
-**Pearn** is an independent software development project focused on building a structured and accessible programming-learning platform.
-
-The project combines:
-
-* Flutter development
-* Application architecture
-* Database design
-* Authentication
-* API integration
-* GitHub-based content delivery
-* Responsive UI
-* Role-based systems
-* Learning progression
 
 ---
 
